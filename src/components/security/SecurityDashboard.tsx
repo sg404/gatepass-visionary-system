@@ -50,14 +50,14 @@ const SecurityDashboard = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="success">Active</Badge>
+                  <Badge variant="default" className="bg-green-500">Active</Badge>
                   <span className="font-medium">Main Entrance</span>
                 </div>
                 <Button variant="outline" size="sm">View</Button>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="success">Active</Badge>
+                  <Badge variant="default" className="bg-green-500">Active</Badge>
                   <span className="font-medium">Back Gate</span>
                 </div>
                 <Button variant="outline" size="sm">View</Button>
