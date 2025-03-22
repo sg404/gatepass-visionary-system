@@ -24,8 +24,20 @@ import {
   Cell
 } from 'recharts';
 
-// Mock data for charts
-const trafficData = [
+// Mock data for daily traffic
+const dailyTrafficData = [
+  { hour: '00:00', entries: 2, exits: 1 },
+  { hour: '03:00', entries: 1, exits: 2 },
+  { hour: '06:00', entries: 5, exits: 3 },
+  { hour: '09:00', entries: 28, exits: 12 },
+  { hour: '12:00', entries: 14, exits: 18 },
+  { hour: '15:00', entries: 12, exits: 17 },
+  { hour: '18:00', entries: 5, exits: 22 },
+  { hour: '21:00', entries: 3, exits: 4 },
+];
+
+// Mock data for weekly traffic
+const weeklyTrafficData = [
   { day: 'Mon', entries: 24, exits: 20 },
   { day: 'Tue', entries: 18, exits: 16 },
   { day: 'Wed', entries: 26, exits: 22 },
@@ -35,6 +47,18 @@ const trafficData = [
   { day: 'Sun', entries: 8, exits: 7 },
 ];
 
+// Mock data for monthly traffic
+const monthlyTrafficData = [
+  { date: 'Jun 1', entries: 42, exits: 38 },
+  { date: 'Jun 5', entries: 48, exits: 44 },
+  { date: 'Jun 10', entries: 56, exits: 50 },
+  { date: 'Jun 15', entries: 61, exits: 58 },
+  { date: 'Jun 20', entries: 58, exits: 54 },
+  { date: 'Jun 25', entries: 52, exits: 48 },
+  { date: 'Jun 30', entries: 45, exits: 40 },
+];
+
+// Use existing mock data for other charts
 const vehicleTypeData = [
   { name: 'Cars', value: 65 },
   { name: 'Motorcycles', value: 20 },
@@ -64,6 +88,41 @@ const alertsData = [
 const DashboardView = () => {
   const { toast } = useToast();
   const [selectedTimeframe, setSelectedTimeframe] = useState('week');
+
+  // Function to get the appropriate traffic data based on the selected timeframe
+  const getTrafficData = () => {
+    switch (selectedTimeframe) {
+      case 'day':
+        return dailyTrafficData;
+      case 'month':
+        return monthlyTrafficData;
+      case 'week':
+      default:
+        return weeklyTrafficData;
+    }
+  };
+
+  // Function to get the appropriate x-axis key based on the selected timeframe
+  const getXAxisKey = () => {
+    switch (selectedTimeframe) {
+      case 'day':
+        return 'hour';
+      case 'month':
+        return 'date';
+      case 'week':
+      default:
+        return 'day';
+    }
+  };
+
+  // Handle timeframe change
+  const handleTimeframeChange = (value: string) => {
+    setSelectedTimeframe(value);
+    toast({
+      title: `Showing ${value}ly traffic data`,
+      description: `Displaying gate traffic analysis for the past ${value}.`,
+    });
+  };
 
   const handleAlertDismiss = (id: number) => {
     toast({
@@ -119,7 +178,12 @@ const DashboardView = () => {
               <CardTitle className="text-lg font-medium">Gate Traffic Analysis</CardTitle>
               <CardDescription>Entry and exit patterns over time</CardDescription>
             </div>
-            <Tabs defaultValue="week" className="w-[240px]" onValueChange={setSelectedTimeframe}>
+            <Tabs 
+              defaultValue="week" 
+              className="w-[240px]" 
+              value={selectedTimeframe}
+              onValueChange={handleTimeframeChange}
+            >
               <TabsList className="grid grid-cols-3">
                 <TabsTrigger value="day">Day</TabsTrigger>
                 <TabsTrigger value="week">Week</TabsTrigger>
@@ -131,7 +195,7 @@ const DashboardView = () => {
             <div className="h-[300px] mt-4 animate-fade-in">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={trafficData}
+                  data={getTrafficData()}
                   margin={{
                     top: 5,
                     right: 30,
@@ -140,7 +204,7 @@ const DashboardView = () => {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="day" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                  <XAxis dataKey={getXAxisKey()} tick={{fontSize: 12}} axisLine={false} tickLine={false} />
                   <YAxis tick={{fontSize: 12}} axisLine={false} tickLine={false} />
                   <Tooltip 
                     contentStyle={{ 
