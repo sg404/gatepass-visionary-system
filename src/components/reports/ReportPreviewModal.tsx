@@ -2,7 +2,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { printer, download } from 'lucide-react';
+import { Printer, Download } from 'lucide-react';
 import { ReportData } from '@/utils/reportGenerator';
 
 interface ReportPreviewModalProps {
@@ -60,11 +60,11 @@ export const ReportPreviewModal = ({
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onPrint}>
-            <printer className="h-4 w-4 mr-2" />
+            <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
           <Button onClick={onDownload}>
-            <download className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4 mr-2" />
             Download
           </Button>
         </div>
