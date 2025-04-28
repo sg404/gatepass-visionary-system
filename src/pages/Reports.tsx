@@ -4,26 +4,18 @@ import MainLayout from '@/components/layout/MainLayout';
 import PageHeader from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Download, FileText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { ReportStatistics } from '@/components/reports/ReportStatistics';
 import { GateTraffic } from '@/components/reports/GateTraffic';
 import { VisitorList } from '@/components/reports/VisitorList';
+import { generateReport, exportAllReports } from '@/utils/reportGenerator';
 
 const Reports = () => {
-  const { toast } = useToast();
-
   const handleGenerateReport = () => {
-    toast({
-      title: "Report Generated",
-      description: "Your report has been generated and is ready for download.",
-    });
+    generateReport();
   };
 
   const handleExportAll = () => {
-    toast({
-      title: "Exporting Reports",
-      description: "All reports are being exported. This may take a few moments.",
-    });
+    exportAllReports();
   };
 
   return (
