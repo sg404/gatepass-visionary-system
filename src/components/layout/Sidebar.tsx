@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -10,7 +9,8 @@ import {
   Settings, 
   Menu, 
   X,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,6 +35,11 @@ const navItems: NavItem[] = [
     label: 'Visitors',
     href: '/visitors',
     icon: Users,
+  },
+  {
+    label: 'Reports',
+    href: '/reports',
+    icon: FileText,
   },
   {
     label: 'Security',

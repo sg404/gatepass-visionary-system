@@ -5,6 +5,7 @@ import Vehicles from '@/pages/Vehicles';
 import Visitors from '@/pages/Visitors';
 import Security from '@/pages/Security';
 import Settings from '@/pages/Settings';
+import Reports from '@/pages/Reports';
 import NotFound from '@/pages/NotFound';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/vehicles" element={<Vehicles />} />
         <Route path="/visitors" element={<Visitors />} />
         <Route path="/security" element={<Security />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

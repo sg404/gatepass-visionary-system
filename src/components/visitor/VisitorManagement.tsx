@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/components/ui/use-toast"
 
 type VisitorStatus = 'active' | 'checked-out' | 'expired';
 
@@ -150,6 +150,8 @@ const VisitorManagement = () => {
     duration: '',
   });
 
+  const { toast } = useToast()
+
   const handleSort = (field: keyof Visitor) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -160,8 +162,34 @@ const VisitorManagement = () => {
   };
 
   const handleAddVisitor = () => {
-    // Handle adding visitor logic
+    if (!newVisitor.name || !newVisitor.licensePlate) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add visitor to mock data (in a real app, this would be an API call)
+    const visitor: Visitor = {
+      id: `VP-${Math.floor(1000 + Math.random() * 9000)}`,
+      name: newVisitor.name,
+      licensePlate: newVisitor.licensePlate,
+      purpose: newVisitor.purpose,
+      contactPerson: newVisitor.contactPerson,
+      checkInTime: new Date(),
+      status: 'active',
+      duration: newVisitor.duration || '2 hours',
+    };
+
+    // Close dialog and show success message
     setIsNewVisitorOpen(false);
+    toast({
+      title: "Success",
+      description: "Visitor has been registered successfully",
+    });
+
     // Reset form
     setNewVisitor({
       name: '',

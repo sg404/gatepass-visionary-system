@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Table, 
@@ -36,12 +35,9 @@ type Vehicle = {
   make: string;
   model: string;
   ownerName: string;
-  ownerType: 'student' | 'staff';
+  ownerType: 'student' | 'faculty';
   status: VehicleStatus;
   registeredDate: Date;
-  expiryDate: Date;
-  lastEntry?: Date;
-  lastExit?: Date;
 };
 
 // Mock data
@@ -51,65 +47,90 @@ const mockVehicles: Vehicle[] = [
     licensePlate: 'ABC-123',
     make: 'Toyota',
     model: 'Camry',
-    ownerName: 'John Smith',
-    ownerType: 'staff',
+    ownerName: 'David Natan Apruebo',
+    ownerType: 'student',
     status: 'active',
     registeredDate: new Date('2023-01-15'),
-    expiryDate: new Date('2024-01-15'),
-    lastEntry: new Date('2023-06-10T08:30:00'),
-    lastExit: new Date('2023-06-10T17:15:00'),
   },
   {
     id: 'V-1002',
     licensePlate: 'DEF-456',
     make: 'Honda',
     model: 'Civic',
-    ownerName: 'Emma Johnson',
+    ownerName: 'Emmilry Magic Cadesim',
     ownerType: 'student',
     status: 'active',
     registeredDate: new Date('2023-02-20'),
-    expiryDate: new Date('2024-02-20'),
-    lastEntry: new Date('2023-06-09T09:15:00'),
-    lastExit: new Date('2023-06-09T16:30:00'),
   },
   {
     id: 'V-1003',
     licensePlate: 'GHI-789',
     make: 'Ford',
     model: 'Focus',
-    ownerName: 'Michael Brown',
-    ownerType: 'staff',
-    status: 'expired',
+    ownerName: 'Shekinah Gayonoche',
+    ownerType: 'student',
+    status: 'active',
     registeredDate: new Date('2022-05-10'),
-    expiryDate: new Date('2023-05-10'),
-    lastEntry: new Date('2023-05-08T07:45:00'),
-    lastExit: new Date('2023-05-08T18:00:00'),
   },
   {
     id: 'V-1004',
     licensePlate: 'JKL-012',
     make: 'Chevrolet',
     model: 'Malibu',
-    ownerName: 'Sophia Davis',
+    ownerName: 'Aerella Lou Nicor',
     ownerType: 'student',
     status: 'active',
     registeredDate: new Date('2023-03-05'),
-    expiryDate: new Date('2024-03-05'),
-    lastEntry: new Date('2023-06-10T10:00:00'),
-    lastExit: new Date('2023-06-10T15:45:00'),
   },
   {
     id: 'V-1005',
     licensePlate: 'MNO-345',
     make: 'Hyundai',
     model: 'Elantra',
-    ownerName: 'Daniel Wilson',
+    ownerName: 'Christian Porras',
     ownerType: 'student',
-    status: 'suspended',
+    status: 'active',
     registeredDate: new Date('2023-01-30'),
-    expiryDate: new Date('2024-01-30'),
-    lastEntry: new Date('2023-05-15T08:15:00'),
-    lastExit: new Date('2023-05-15T14:30:00'),
+  },
+  {
+    id: 'V-1006',
+    licensePlate: 'PQR-678',
+    make: 'Toyota',
+    model: 'Corolla',
+    ownerName: 'Angielou Sujede',
+    ownerType: 'student',
+    status: 'active',
+    registeredDate: new Date('2023-04-15'),
+  },
+  {
+    id: 'V-1007',
+    licensePlate: 'STU-901',
+    make: 'Honda',
+    model: 'Accord',
+    ownerName: 'Victor Jom Sorita',
+    ownerType: 'student',
+    status: 'active',
+    registeredDate: new Date('2023-05-01'),
+  },
+  {
+    id: 'V-1008',
+    licensePlate: 'VWX-234',
+    make: 'Ford',
+    model: 'Mustang',
+    ownerName: 'Hannah Planco',
+    ownerType: 'student',
+    status: 'active',
+    registeredDate: new Date('2023-05-20'),
+  },
+  {
+    id: 'V-1009',
+    licensePlate: 'YZA-567',
+    make: 'Toyota',
+    model: 'Fortuner',
+    ownerName: 'Reynaldo Ilangos',
+    ownerType: 'faculty',
+    status: 'active',
+    registeredDate: new Date('2023-01-10'),
   },
 ];
 
@@ -145,7 +166,7 @@ const getStatusBadgeVariant = (status: VehicleStatus) => {
 
 const VehiclesList = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'student' | 'staff'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'student' | 'faculty'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | VehicleStatus>('all');
   const [sortField, setSortField] = useState<keyof Vehicle>('registeredDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -221,11 +242,11 @@ const VehiclesList = () => {
                 <span className={filterType === 'student' ? 'font-medium' : ''}>Student</span>
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={() => setFilterType('staff')}
+                onClick={() => setFilterType('faculty')}
                 className="flex items-center gap-2"
               >
-                {filterType === 'staff' && <Check className="h-4 w-4" />}
-                <span className={filterType === 'staff' ? 'font-medium' : ''}>Staff</span>
+                {filterType === 'faculty' && <Check className="h-4 w-4" />}
+                <span className={filterType === 'faculty' ? 'font-medium' : ''}>Faculty</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -277,85 +298,38 @@ const VehiclesList = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">
-                <div className="flex items-center cursor-pointer" onClick={() => handleSort('id')}>
-                  ID
-                  <ArrowUpDown className="h-4 w-4 ml-1" />
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center cursor-pointer" onClick={() => handleSort('licensePlate')}>
-                  License Plate
-                  <ArrowUpDown className="h-4 w-4 ml-1" />
-                </div>
-              </TableHead>
+              <TableHead className="w-[120px]">ID</TableHead>
+              <TableHead>License Plate</TableHead>
               <TableHead>Vehicle</TableHead>
-              <TableHead>
-                <div className="flex items-center cursor-pointer" onClick={() => handleSort('ownerName')}>
-                  Owner
-                  <ArrowUpDown className="h-4 w-4 ml-1" />
-                </div>
-              </TableHead>
+              <TableHead>Owner</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>
-                <div className="flex items-center cursor-pointer" onClick={() => handleSort('status')}>
-                  Status
-                  <ArrowUpDown className="h-4 w-4 ml-1" />
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center cursor-pointer" onClick={() => handleSort('expiryDate')}>
-                  Expiry
-                  <ArrowUpDown className="h-4 w-4 ml-1" />
-                </div>
-              </TableHead>
-              <TableHead>Last Activity</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredVehicles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No vehicles found.
                 </TableCell>
               </TableRow>
             ) : (
               filteredVehicles.map((vehicle) => (
-                <TableRow key={vehicle.id} className="scale-in-center" style={{ 
-                  animationDelay: `${filteredVehicles.indexOf(vehicle) * 0.05}s`,
-                  animationFillMode: 'both' 
-                }}>
+                <TableRow key={vehicle.id}>
                   <TableCell className="font-medium">{vehicle.id}</TableCell>
                   <TableCell>{vehicle.licensePlate}</TableCell>
                   <TableCell>{vehicle.make} {vehicle.model}</TableCell>
                   <TableCell>{vehicle.ownerName}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {vehicle.ownerType === 'student' ? 'Student' : 'Staff'}
+                      {vehicle.ownerType === 'student' ? 'Student' : 'Faculty'}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(vehicle.status)}>
                       {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
                     </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(vehicle.expiryDate)}</TableCell>
-                  <TableCell>
-                    {vehicle.lastEntry && vehicle.lastExit ? (
-                      <div className="text-xs">
-                        <div className="flex items-center text-muted-foreground">
-                          <span className="w-1 h-1 bg-green-500 rounded-full mr-1.5"></span>
-                          In: {formatDateTime(vehicle.lastEntry)}
-                        </div>
-                        <div className="flex items-center text-muted-foreground mt-1">
-                          <span className="w-1 h-1 bg-blue-500 rounded-full mr-1.5"></span>
-                          Out: {formatDateTime(vehicle.lastExit)}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No recent activity</span>
-                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
