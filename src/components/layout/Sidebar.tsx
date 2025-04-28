@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,8 @@ import {
   Menu, 
   X,
   LogOut,
-  FileText
+  FileText,
+  ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -40,6 +42,11 @@ const navItems: NavItem[] = [
     label: 'Reports',
     href: '/reports',
     icon: FileText,
+  },
+  {
+    label: 'Access Logs',
+    href: '/access-logs',
+    icon: ClipboardList,
   },
   {
     label: 'Security',
