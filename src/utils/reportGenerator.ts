@@ -18,10 +18,11 @@ export interface ReportData {
     plate: string;
     gate: string;
     time: string;
+    type?: string;
   }>;
 }
 
-const mockReportData: ReportData = {
+export const mockReportData: ReportData = {
   totalEntries: 2547,
   totalVisitors: 412,
   parkingOccupancy: {
@@ -34,59 +35,82 @@ const mockReportData: ReportData = {
     oldSite: 1300,
   },
   recentVisitors: [
-    { name: 'Juan Dela Cruz', plate: 'ABC 123', gate: 'New Site', time: '09:45 AM' },
-    { name: 'Maria Santos', plate: 'XYZ 789', gate: 'Old Site', time: '10:15 AM' },
-    { name: 'Pedro Reyes', plate: 'DEF 456', gate: 'New Site', time: '11:30 AM' },
-    { name: 'Ana Garcia', plate: 'GHI 789', gate: 'Old Site', time: '01:20 PM' },
-    { name: 'Ramon Cruz', plate: 'JKL 012', gate: 'New Site', time: '02:45 PM' },
+    { name: 'David Natan Apruebo', plate: 'ABC 123', gate: 'New Site', time: '09:45 AM' },
+    { name: 'Emmilry Magic Cadesim', plate: 'XYZ 789', gate: 'Old Site', time: '10:15 AM' },
+    { name: 'Shekinah Gayonoche', plate: 'DEF 456', gate: 'New Site', time: '11:30 AM' },
+    { name: 'Aerella Lou Nicor', plate: 'GHI 789', gate: 'Old Site', time: '01:20 PM' },
+    { name: 'Christian Porras', plate: 'JKL 012', gate: 'New Site', time: '02:45 PM' },
+    { name: 'Angielou Sujede', plate: 'MNO 345', gate: 'Old Site', time: '03:15 PM' },
+    { name: 'Victor Jom Sorita', plate: 'PQR 678', gate: 'New Site', time: '04:00 PM' },
+    { name: 'Hannah Planco', plate: 'STU 901', gate: 'Old Site', time: '04:30 PM' },
+    { name: 'Reynaldo Ilangos', plate: 'VWX 234', gate: 'New Site', time: '05:00 PM', type: 'faculty' },
   ],
 };
 
-export const generateReport = () => {
-  const report = mockReportData;
-  const reportContent = `
-GATE ACCESS SYSTEM - COMPREHENSIVE REPORT
+export const generateReportContent = (data: ReportData): string => {
+  return `GATE ACCESS SYSTEM - COMPREHENSIVE REPORT
 Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
 
 SUMMARY
 -------
-Total Entries: ${report.totalEntries}
-Total Visitors: ${report.totalVisitors}
-Parking Occupancy: ${report.parkingOccupancy.occupied}/${report.parkingOccupancy.total} (${report.parkingOccupancy.percentage}%)
+Total Entries: ${data.totalEntries}
+Total Visitors: ${data.totalVisitors}
+Parking Occupancy: ${data.parkingOccupancy.occupied}/${data.parkingOccupancy.total} (${data.parkingOccupancy.percentage}%)
 
 GATE ACTIVITY
 ------------
-New Site Gate: ${report.gates.newSite} entries
-Old Site Gate: ${report.gates.oldSite} entries
+New Site Gate: ${data.gates.newSite} entries
+Old Site Gate: ${data.gates.oldSite} entries
 
 RECENT VISITORS
 --------------
-${report.recentVisitors.map(visitor => 
-  `${visitor.name} (${visitor.plate}) - ${visitor.gate} at ${visitor.time}`
-).join('\n')}
-`;
+${data.recentVisitors.map(visitor => 
+  `${visitor.name}${visitor.type ? ` (${visitor.type})` : ''} (${visitor.plate}) - ${visitor.gate} at ${visitor.time}`
+).join('\n')}`;
+};
 
-  // Create blob and download
-  const blob = new Blob([reportContent], { type: 'text/plain' });
+export const downloadReport = (content: string, filename: string) => {
+  const blob = new Blob([content], { type: 'text/plain' });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
-  const timestamp = new Date().toISOString().split('T')[0];
   
   link.href = url;
-  link.download = `gate-access-report-${timestamp}.txt`;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 
   toast({
-    title: "Report Generated",
+    title: "Report Downloaded",
     description: "Your report has been downloaded successfully.",
   });
 };
 
+export const printReport = () => {
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    const content = generateReportContent(mockReportData);
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Gate Access System Report</title>
+          <style>
+            body { font-family: monospace; padding: 20px; }
+            pre { white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <pre>${content}</pre>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  }
+};
+
 export const exportAllReports = () => {
-  // Create a ZIP file with daily, weekly, and monthly reports
   const reports = [
     { name: 'daily-report', data: mockReportData },
     { name: 'weekly-report', data: mockReportData },
@@ -106,7 +130,7 @@ export const exportAllReports = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    }, index * 1000); // Delay each download by 1 second
+    }, index * 1000);
   });
 
   toast({
@@ -114,4 +138,3 @@ export const exportAllReports = () => {
     description: "All reports have been downloaded successfully.",
   });
 };
-
