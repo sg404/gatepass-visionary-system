@@ -7,6 +7,7 @@ import Security from '@/pages/Security';
 import Settings from '@/pages/Settings';
 import Reports from '@/pages/Reports';
 import AccessLogs from '@/pages/AccessLogs';
+import VehicleEntryLogs from '@/pages/VehicleEntryLogs';
 import NotFound from '@/pages/NotFound';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/security" element={<Security />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/access-logs" element={<AccessLogs />} />
+        <Route path="/vehicle-entry-logs" element={<VehicleEntryLogs />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

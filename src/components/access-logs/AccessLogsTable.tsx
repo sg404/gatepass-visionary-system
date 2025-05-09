@@ -18,12 +18,12 @@ interface AccessLogsTableProps {
 
 const AccessLogsTable: React.FC<AccessLogsTableProps> = ({ logs }) => {
   // Function to get the badge color based on action type
-  const getBadgeVariant = (action: string) => {
+  const getBadgeVariant = (action: string): "default" | "destructive" | "outline" | "secondary" => {
     const actionLower = action.toLowerCase();
-    if (actionLower.includes('login')) return 'green';
+    if (actionLower.includes('login')) return 'secondary';
     if (actionLower.includes('logout')) return 'destructive';
-    if (actionLower.includes('issue')) return 'purple';
-    if (actionLower.includes('assigned') || actionLower.includes('on duty')) return 'blue';
+    if (actionLower.includes('issue')) return 'secondary';
+    if (actionLower.includes('assigned') || actionLower.includes('on duty')) return 'secondary';
     return 'default';
   };
 

@@ -12,7 +12,8 @@ import {
   X,
   LogOut,
   FileText,
-  ClipboardList
+  ClipboardList,
+  CarFront
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -47,6 +48,11 @@ const navItems: NavItem[] = [
     label: 'Access Logs',
     href: '/access-logs',
     icon: ClipboardList,
+  },
+  {
+    label: 'Vehicle Entry/Exit',
+    href: '/vehicle-entry-logs',
+    icon: CarFront,
   },
   {
     label: 'Security',
