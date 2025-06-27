@@ -3,7 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, AlertTriangle } from 'lucide-react';
+import { Car, AlertTriangle, Calendar, Clock, Tag, User, Palette } from 'lucide-react';
+
+interface VehicleInfo {
+  plateNumber: string;
+  rfidTag: string;
+  owner: string;
+  model: string;
+  brand: string;
+  color: string;
+  entryTime: string;
+  entryDate: string;
+  type: 'student' | 'faculty' | 'unauthorized';
+}
 
 interface VehicleDetectionPanelProps {
   onUnauthorizedVehicle: (plateNumber: string) => void;
@@ -11,8 +23,44 @@ interface VehicleDetectionPanelProps {
 
 const VehicleDetectionPanel: React.FC<VehicleDetectionPanelProps> = ({ onUnauthorizedVehicle }) => {
   const [detectionStatus, setDetectionStatus] = useState<'idle' | 'detecting' | 'detected'>('idle');
-  const [detectedPlate, setDetectedPlate] = useState<string>('');
-  const [vehicleType, setVehicleType] = useState<'student' | 'faculty' | 'unauthorized' | null>(null);
+  const [vehicleInfo, setVehicleInfo] = useState<VehicleInfo | null>(null);
+
+  // Mock vehicle data for simulation
+  const mockVehicles: VehicleInfo[] = [
+    {
+      plateNumber: 'ABC1234',
+      rfidTag: 'RFID001234',
+      owner: 'John Doe',
+      model: 'Civic',
+      brand: 'Honda',
+      color: 'Blue',
+      entryTime: new Date().toLocaleTimeString(),
+      entryDate: new Date().toLocaleDateString(),
+      type: 'student'
+    },
+    {
+      plateNumber: 'XYZ9876',
+      rfidTag: 'RFID009876',
+      owner: 'Dr. Jane Smith',
+      model: 'Camry',
+      brand: 'Toyota',
+      color: 'White',
+      entryTime: new Date().toLocaleTimeString(),
+      entryDate: new Date().toLocaleDateString(),
+      type: 'faculty'
+    },
+    {
+      plateNumber: 'VIS2024',
+      rfidTag: 'N/A',
+      owner: 'Unknown Visitor',
+      model: 'Vios',
+      brand: 'Toyota',
+      color: 'Silver',
+      entryTime: new Date().toLocaleTimeString(),
+      entryDate: new Date().toLocaleDateString(),
+      type: 'unauthorized'
+    }
+  ];
 
   // Simulate vehicle detection
   useEffect(() => {
@@ -22,28 +70,23 @@ const VehicleDetectionPanel: React.FC<VehicleDetectionPanelProps> = ({ onUnautho
         setDetectionStatus('detecting');
         
         setTimeout(() => {
-          const plates = ['ABC1234', 'XYZ9876', 'VIS2024', 'UNK5678'];
-          const randomPlate = plates[Math.floor(Math.random() * plates.length)];
-          setDetectedPlate(randomPlate);
+          const randomVehicle = mockVehicles[Math.floor(Math.random() * mockVehicles.length)];
+          // Update entry time to current time
+          const updatedVehicle = {
+            ...randomVehicle,
+            entryTime: new Date().toLocaleTimeString(),
+            entryDate: new Date().toLocaleDateString()
+          };
           
-          // Determine vehicle type based on plate
-          if (randomPlate.startsWith('VIS') || randomPlate.startsWith('UNK')) {
-            setVehicleType('unauthorized');
-          } else if (Math.random() > 0.7) {
-            setVehicleType('faculty');
-          } else {
-            setVehicleType('student');
-          }
-          
+          setVehicleInfo(updatedVehicle);
           setDetectionStatus('detected');
           
-          // Auto clear after 10 seconds if authorized
-          if (!randomPlate.startsWith('VIS') && !randomPlate.startsWith('UNK')) {
+          // Auto clear after 15 seconds if authorized
+          if (updatedVehicle.type !== 'unauthorized') {
             setTimeout(() => {
               setDetectionStatus('idle');
-              setDetectedPlate('');
-              setVehicleType(null);
-            }, 10000);
+              setVehicleInfo(null);
+            }, 15000);
           }
         }, 2000);
       }
@@ -53,16 +96,16 @@ const VehicleDetectionPanel: React.FC<VehicleDetectionPanelProps> = ({ onUnautho
   }, [detectionStatus]);
 
   const handleUnauthorizedAction = () => {
-    onUnauthorizedVehicle(detectedPlate);
-    setDetectionStatus('idle');
-    setDetectedPlate('');
-    setVehicleType(null);
+    if (vehicleInfo) {
+      onUnauthorizedVehicle(vehicleInfo.plateNumber);
+      setDetectionStatus('idle');
+      setVehicleInfo(null);
+    }
   };
 
   const handleClearDetection = () => {
     setDetectionStatus('idle');
-    setDetectedPlate('');
-    setVehicleType(null);
+    setVehicleInfo(null);
   };
 
   return (
@@ -95,25 +138,67 @@ const VehicleDetectionPanel: React.FC<VehicleDetectionPanelProps> = ({ onUnautho
             </div>
           )}
           
-          {detectionStatus === 'detected' && (
+          {detectionStatus === 'detected' && vehicleInfo && (
             <div className="space-y-4">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
-                vehicleType === 'unauthorized' ? 'bg-red-100' : 'bg-green-100'
+                vehicleInfo.type === 'unauthorized' ? 'bg-red-100' : 'bg-green-100'
               }`}>
                 <Car className={`h-8 w-8 ${
-                  vehicleType === 'unauthorized' ? 'text-red-600' : 'text-green-600'
+                  vehicleInfo.type === 'unauthorized' ? 'text-red-600' : 'text-green-600'
                 }`} />
               </div>
               
-              <div className="space-y-2">
-                <p className="font-mono text-lg font-bold">{detectedPlate}</p>
-                <Badge variant={vehicleType === 'unauthorized' ? 'destructive' : 'secondary'}>
-                  {vehicleType === 'unauthorized' ? 'Unauthorized' : 
-                   vehicleType === 'faculty' ? 'Faculty' : 'Student'}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Plate:</span>
+                      <span className="font-mono font-bold">{vehicleInfo.plateNumber}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">RFID:</span>
+                      <span className="font-mono">{vehicleInfo.rfidTag}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Owner:</span>
+                      <span>{vehicleInfo.owner}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Car className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Vehicle:</span>
+                      <span>{vehicleInfo.brand} {vehicleInfo.model}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Palette className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Color:</span>
+                      <span>{vehicleInfo.color}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Time:</span>
+                      <span>{vehicleInfo.entryTime}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Date:</span>
+                  <span>{vehicleInfo.entryDate}</span>
+                </div>
+                
+                <Badge variant={vehicleInfo.type === 'unauthorized' ? 'destructive' : 'secondary'}>
+                  {vehicleInfo.type === 'unauthorized' ? 'Unauthorized Visitor' : 
+                   vehicleInfo.type === 'faculty' ? 'Faculty Member' : 'Student'}
                 </Badge>
               </div>
               
-              {vehicleType === 'unauthorized' && (
+              {vehicleInfo.type === 'unauthorized' && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-center gap-2 text-red-600">
                     <AlertTriangle className="h-5 w-5" />
@@ -126,7 +211,7 @@ const VehicleDetectionPanel: React.FC<VehicleDetectionPanelProps> = ({ onUnautho
               )}
               
               <Button onClick={handleClearDetection} variant="outline" size="sm">
-                Clear
+                Clear Detection
               </Button>
             </div>
           )}
