@@ -9,6 +9,9 @@ import Reports from '@/pages/Reports';
 import AccessLogs from '@/pages/AccessLogs';
 import VehicleEntryLogs from '@/pages/VehicleEntryLogs';
 import NotFound from '@/pages/NotFound';
+import GuardLogin from '@/pages/GuardLogin';
+import GuardDashboard from '@/pages/GuardDashboard';
+import GuardVehicleLogs from '@/pages/GuardVehicleLogs';
 
 function App() {
   return (
@@ -22,6 +25,9 @@ function App() {
         <Route path="/access-logs" element={<AccessLogs />} />
         <Route path="/vehicle-entry-logs" element={<VehicleEntryLogs />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/guard-login" element={<GuardLogin />} />
+        <Route path="/guard-dashboard" element={<GuardDashboard />} />
+        <Route path="/guard/vehicle-logs" element={<GuardVehicleLogs />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
