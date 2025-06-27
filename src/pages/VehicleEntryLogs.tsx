@@ -29,45 +29,59 @@ const VehicleEntryLogs = () => {
   };
   
   const handleDownloadCSV = (type: 'vehicle' | 'visitor') => {
-    const data = type === 'vehicle' ? vehicleLogs : visitorLogs;
-    const headers = type === 'vehicle' 
-      ? ['Full Name', 'Role', 'Sticker ID', 'Plate Number', 'Entry Time', 'Exit Time', 'Status']
-      : ['Full Name', 'Plate Number', 'Purpose', 'Pass ID', 'Entry Time', 'Exit Time', 'Status'];
-    
-    const mappedData = type === 'vehicle' 
-      ? data.map((log: VehicleEntryLog) => [
-          log.fullName,
-          log.role,
-          log.stickerID,
-          log.plateNumber,
-          log.entryTime,
-          log.exitTime || '',
-          log.status
-        ]) 
-      : data.map((log: VisitorEntryLog) => [
-          log.fullName,
-          log.plateNumber,
-          log.purpose,
-          log.passID,
-          log.entryTime,
-          log.exitTime || '',
-          log.status
-        ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...mappedData.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${type}-entry-logs.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (type === 'vehicle') {
+      const headers = ['Full Name', 'Role', 'Sticker ID', 'Plate Number', 'Entry Time', 'Exit Time', 'Status'];
+      const mappedData = vehicleLogs.map((log: VehicleEntryLog) => [
+        log.fullName,
+        log.role,
+        log.stickerID,
+        log.plateNumber,
+        log.entryTime,
+        log.exitTime || '',
+        log.status
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...mappedData.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vehicle-entry-logs.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = ['Full Name', 'Plate Number', 'Purpose', 'Pass ID', 'Entry Time', 'Exit Time', 'Status'];
+      const mappedData = visitorLogs.map((log: VisitorEntryLog) => [
+        log.fullName,
+        log.plateNumber,
+        log.purpose,
+        log.passID,
+        log.entryTime,
+        log.exitTime || '',
+        log.status
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...mappedData.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `visitor-entry-logs.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
   
   const generateReport = () => {
