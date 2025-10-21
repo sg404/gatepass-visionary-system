@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,9 +11,10 @@ interface VisitorFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   detectedPlateNumber: string | null;
+  onPassIssued?: (visitorData: any) => void;
 }
 
-const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, detectedPlateNumber }) => {
+const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, detectedPlateNumber, onPassIssued }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     plateNumber: detectedPlateNumber || '',
@@ -26,11 +26,11 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Generate temporary pass
     const passId = `TP${Date.now().toString().slice(-6)}`;
     const entryTime = new Date().toLocaleString();
-    
+
     const pass = {
       passId,
       fullName: formData.fullName,
@@ -39,10 +39,15 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
       entryTime,
       guardName: 'Current Guard' // Would be actual guard name from session
     };
-    
+
     setGeneratedPass(pass);
     setIsSubmitted(true);
-    
+
+    // Call the callback if provided
+    if (onPassIssued) {
+      onPassIssued(pass);
+    }
+
     // In real app, this would save to database
     console.log('Visitor pass generated:', pass);
   };
@@ -74,7 +79,7 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
             {isSubmitted ? 'Temporary Pass Generated' : 'Visitor Information'}
           </DialogTitle>
         </DialogHeader>
-        
+
         {!isSubmitted ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -86,7 +91,7 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="plateNumber">Vehicle Plate Number</Label>
               <Input
@@ -96,7 +101,7 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="purpose">Purpose of Visit</Label>
               <Select value={formData.purpose} onValueChange={(value) => setFormData({ ...formData, purpose: value })}>
@@ -114,7 +119,7 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
                 </SelectContent>
               </Select>
             </div>
-            
+
             {formData.purpose === 'others' && (
               <div>
                 <Label htmlFor="customPurpose">Specify Purpose</Label>
@@ -126,7 +131,7 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
                 />
               </div>
             )}
-            
+
             <div className="flex gap-2 pt-4">
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
@@ -140,14 +145,14 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
               <CheckCircle className="h-8 w-8 mr-2" />
               <span className="text-lg font-medium">Pass Generated Successfully!</span>
             </div>
-            
+
             <Card>
               <CardContent className="p-4 space-y-2">
                 <div className="text-center border-b pb-2 mb-2">
                   <h3 className="font-bold">TEMPORARY GATE PASS</h3>
                   <p className="text-sm text-muted-foreground">Vehicle Entry Pass</p>
                 </div>
-                
+
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="font-medium">Pass ID:</span>
@@ -174,13 +179,13 @@ const VisitorFormModal: React.FC<VisitorFormModalProps> = ({ isOpen, onClose, de
                     <span>{generatedPass?.guardName}</span>
                   </div>
                 </div>
-                
+
                 <div className="text-xs text-center text-muted-foreground border-t pt-2 mt-2">
                   Please return this pass upon exit
                 </div>
               </CardContent>
             </Card>
-            
+
             <div className="flex gap-2">
               <Button onClick={handlePrintPass} variant="outline" className="flex-1">
                 <Printer className="h-4 w-4 mr-2" />

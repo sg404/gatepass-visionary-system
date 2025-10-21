@@ -1,19 +1,19 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Car, 
-  Users, 
-  Shield, 
-  Settings, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Car,
+  Users,
+  Shield,
+  Settings,
+  Menu,
   X,
   LogOut,
   FileText,
   ClipboardList,
-  CarFront
+  CarFront,
+  Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -55,6 +55,11 @@ const navItems: NavItem[] = [
     icon: CarFront,
   },
   {
+    label: 'RFID Management',
+    href: '/rfid-management',
+    icon: Radio,
+  },
+  {
     label: 'Security',
     href: '/security',
     icon: Shield,
@@ -93,10 +98,10 @@ const Sidebar = () => {
               <span className="text-white font-medium text-sm">GP</span>
             </div>
           )}
-          <Button 
-            onClick={toggleSidebar} 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            onClick={toggleSidebar}
+            variant="ghost"
+            size="icon"
             className="text-sidebar-foreground hover:bg-sidebar-accent focus-visible:ring-0 focus-visible:ring-offset-0"
           >
             {expanded ? <X size={18} /> : <Menu size={18} />}
@@ -111,13 +116,13 @@ const Sidebar = () => {
                   to={item.href}
                   className={cn(
                     "flex items-center group rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    location.pathname === item.href 
-                      ? "bg-sidebar-accent text-sidebar-foreground" 
+                    location.pathname === item.href
+                      ? "bg-sidebar-accent text-sidebar-foreground"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50",
                     !expanded && "justify-center"
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5 flex-shrink-0", 
+                  <item.icon className={cn("h-5 w-5 flex-shrink-0",
                     location.pathname === item.href
                       ? "text-primary"
                       : "text-sidebar-foreground/50 group-hover:text-primary/80",

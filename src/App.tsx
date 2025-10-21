@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
 import Vehicles from '@/pages/Vehicles';
@@ -8,6 +7,7 @@ import Settings from '@/pages/Settings';
 import Reports from '@/pages/Reports';
 import AccessLogs from '@/pages/AccessLogs';
 import VehicleEntryLogs from '@/pages/VehicleEntryLogs';
+import RFIDManagement from '@/pages/RFIDManagement';
 import NotFound from '@/pages/NotFound';
 import GuardLogin from '@/pages/GuardLogin';
 import GuardDashboard from '@/pages/GuardDashboard';
@@ -24,6 +24,7 @@ function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/access-logs" element={<AccessLogs />} />
         <Route path="/vehicle-entry-logs" element={<VehicleEntryLogs />} />
+        <Route path="/rfid-management" element={<RFIDManagement />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/guard-login" element={<GuardLogin />} />
         <Route path="/guard-dashboard" element={<GuardDashboard />} />

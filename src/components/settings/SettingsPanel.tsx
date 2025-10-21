@@ -6,25 +6,29 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Shield, 
-  Camera, 
-  Radio, 
-  Clock, 
-  Bell, 
+import { Button } from '@/components/ui/button';
+import {
+  Shield,
+  Camera,
+  Radio,
+  Clock,
+  Bell,
   Database,
-  AlertTriangle
+  AlertTriangle,
+  Car
 } from 'lucide-react';
 
 const SettingsPanel = () => {
   const [anprThreshold, setAnprThreshold] = useState(85);
   const [rfidScanDistance, setRfidScanDistance] = useState(3);
   const [visitorPassExpiry, setVisitorPassExpiry] = useState(12);
+  const [isEditingParking, setIsEditingParking] = useState(false);
   
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="devices">
-        <TabsList className="grid grid-cols-4 w-full max-w-xl mb-4">
+      <Tabs defaultValue="parking">
+        <TabsList className="grid grid-cols-5 w-full max-w-2xl mb-4">
+          <TabsTrigger value="parking">Parking</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -283,6 +287,90 @@ const SettingsPanel = () => {
           </Card>
         </TabsContent>
         
+        <TabsContent value="parking" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-lg font-medium">Parking Configuration</CardTitle>
+                  <CardDescription>Configure parking slot settings and capacity</CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditingParking(!isEditingParking)}
+                >
+                  {isEditingParking ? 'Cancel' : 'Edit'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="total-slots">Total Parking Slots</Label>
+                <Input
+                  id="total-slots"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  defaultValue="100"
+                  placeholder="Enter total parking slots"
+                  disabled={!isEditingParking}
+                />
+                <p className="text-xs text-muted-foreground">Set the total number of parking slots available in the system</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="faculty-slots">Faculty Slots</Label>
+                  <Input id="faculty-slots" type="number" min="0" defaultValue="30" disabled={!isEditingParking} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="student-slots">Student Slots</Label>
+                  <Input id="student-slots" type="number" min="0" defaultValue="50" disabled={!isEditingParking} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="visitor-slots">Visitor Slots</Label>
+                  <Input id="visitor-slots" type="number" min="0" defaultValue="20" disabled={!isEditingParking} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reserved-slots">Reserved Slots</Label>
+                  <Input id="reserved-slots" type="number" min="0" defaultValue="10" disabled={!isEditingParking} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="auto-assign">Auto-assign Parking Slots</Label>
+                  <span className="text-xs text-muted-foreground">Automatically assign available slots to vehicles</span>
+                </div>
+                <Switch id="auto-assign" defaultChecked disabled={!isEditingParking} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="overbooking-alert">Overbooking Alerts</Label>
+                  <span className="text-xs text-muted-foreground">Alert when parking slots are over capacity</span>
+                </div>
+                <Switch id="overbooking-alert" defaultChecked disabled={!isEditingParking} />
+              </div>
+
+              {isEditingParking && (
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button variant="outline" onClick={() => setIsEditingParking(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => setIsEditingParking(false)}>
+                    Save Changes
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="database" className="space-y-4">
           <Card>
             <CardHeader>

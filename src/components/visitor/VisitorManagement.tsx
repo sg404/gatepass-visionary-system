@@ -15,13 +15,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
-  Search, 
-  UserPlus, 
-  Clock, 
-  ArrowUpDown, 
-  Filter, 
-  EyeOff, 
+import {
+  Search,
+  UserPlus,
+  Clock,
+  ArrowUpDown,
+  Filter,
+  EyeOff,
   ExternalLink,
   Check,
   X,
@@ -202,20 +202,20 @@ const VisitorManagement = () => {
 
   const filteredVisitors = mockVisitors
     .filter(visitor => {
-      const matchesTab = 
+      const matchesTab =
         (selectedTab === 'active' && visitor.status === 'active') ||
         (selectedTab === 'checked-out' && visitor.status === 'checked-out') ||
         selectedTab === 'all';
-      
-      const matchesSearch = 
+
+      const matchesSearch =
         visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         visitor.licensePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
         visitor.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
         visitor.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
         visitor.id.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesStatus = filterStatus === 'all' || visitor.status === filterStatus;
-      
+
       return matchesSearch && matchesStatus && matchesTab;
     })
     .sort((a, b) => {
@@ -230,53 +230,33 @@ const VisitorManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Active Visitors</CardTitle>
-            <CardDescription>Currently on premises</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {mockVisitors.filter(v => v.status === 'active').length}
-            </div>
-            <div className="flex justify-between items-center mt-4">
-              <Button variant="outline" className="h-8 px-2 text-xs">
+      <div className="grid gap-2 md:grid-cols-2">
+        <Card className="h-20">
+          <CardContent className="p-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-sm font-medium">Active Visitors</CardTitle>
+                <div className="text-xl font-bold mt-1">
+                  {mockVisitors.filter(v => v.status === 'active').length}
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="h-6 px-2 text-xs">
                 View All
               </Button>
-              <span className="text-xs text-muted-foreground">Updated just now</span>
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Today's Visitors</CardTitle>
-            <CardDescription>Total for the day</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">12</div>
-            <div className="flex justify-between items-center mt-4">
+
+        <Card className="h-20">
+          <CardContent className="p-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-sm font-medium">Today's Visitors</CardTitle>
+                <div className="text-xl font-bold mt-1">12</div>
+              </div>
               <div className="text-xs text-green-600 font-medium">
                 +3 from yesterday
               </div>
-              <span className="text-xs text-muted-foreground">June 10, 2023</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Average Visit Duration</CardTitle>
-            <CardDescription>Time spent on campus</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">1.5 hrs</div>
-            <div className="flex justify-between items-center mt-4">
-              <div className="text-xs text-amber-600 font-medium">
-                -15 min from last week
-              </div>
-              <span className="text-xs text-muted-foreground">Past 7 days</span>
             </div>
           </CardContent>
         </Card>
@@ -291,100 +271,16 @@ const VisitorManagement = () => {
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
           </Tabs>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            <Dialog open={isNewVisitorOpen} onOpenChange={setIsNewVisitorOpen}>
-              <DialogTrigger asChild>
-                <Button className="ml-auto">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  New Visitor
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[525px]">
-                <DialogHeader>
-                  <DialogTitle>Register New Visitor</DialogTitle>
-                  <DialogDescription>
-                    Enter the visitor's information to issue a temporary pass.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Full Name
-                    </Label>
-                    <Input
-                      id="name"
-                      value={newVisitor.name}
-                      onChange={(e) => setNewVisitor({...newVisitor, name: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="license" className="text-right">
-                      License Plate
-                    </Label>
-                    <Input
-                      id="license"
-                      value={newVisitor.licensePlate}
-                      onChange={(e) => setNewVisitor({...newVisitor, licensePlate: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="purpose" className="text-right">
-                      Purpose
-                    </Label>
-                    <Input
-                      id="purpose"
-                      value={newVisitor.purpose}
-                      onChange={(e) => setNewVisitor({...newVisitor, purpose: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="contact" className="text-right">
-                      Contact Person
-                    </Label>
-                    <Input
-                      id="contact"
-                      value={newVisitor.contactPerson}
-                      onChange={(e) => setNewVisitor({...newVisitor, contactPerson: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="duration" className="text-right">
-                      Est. Duration
-                    </Label>
-                    <Input
-                      id="duration"
-                      placeholder="e.g. 2 hours"
-                      value={newVisitor.duration}
-                      onChange={(e) => setNewVisitor({...newVisitor, duration: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsNewVisitorOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddVisitor}>Issue Pass</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+
+
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
           <div className="relative max-w-md w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <input 
-              type="search" 
-              placeholder="Search visitors..." 
+            <input
+              type="search"
+              placeholder="Search visitors..."
               className="h-10 w-full rounded-md border border-input bg-background pl-10 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -400,28 +296,28 @@ const VisitorManagement = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setFilterStatus('all')}
                   className="flex items-center gap-2"
                 >
                   {filterStatus === 'all' && <Check className="h-4 w-4" />}
                   <span className={filterStatus === 'all' ? 'font-medium' : ''}>All</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setFilterStatus('active')}
                   className="flex items-center gap-2"
                 >
                   {filterStatus === 'active' && <Check className="h-4 w-4" />}
                   <span className={filterStatus === 'active' ? 'font-medium' : ''}>Active</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setFilterStatus('checked-out')}
                   className="flex items-center gap-2"
                 >
                   {filterStatus === 'checked-out' && <Check className="h-4 w-4" />}
                   <span className={filterStatus === 'checked-out' ? 'font-medium' : ''}>Checked Out</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setFilterStatus('expired')}
                   className="flex items-center gap-2"
                 >
@@ -432,7 +328,7 @@ const VisitorManagement = () => {
             </DropdownMenu>
           </div>
         </div>
-        
+
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
@@ -471,15 +367,15 @@ const VisitorManagement = () => {
             <TableBody>
               {filteredVisitors.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No visitors found.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredVisitors.map((visitor) => (
-                  <TableRow key={visitor.id} className="scale-in-center" style={{ 
+                  <TableRow key={visitor.id} className="scale-in-center" style={{
                     animationDelay: `${filteredVisitors.indexOf(visitor) * 0.05}s`,
-                    animationFillMode: 'both' 
+                    animationFillMode: 'both'
                   }}>
                     <TableCell className="font-medium">{visitor.id}</TableCell>
                     <TableCell>
@@ -511,21 +407,15 @@ const VisitorManagement = () => {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(visitor.status)}>
-                        {visitor.status === 'checked-out' ? 'Checked Out' : 
+                        {visitor.status === 'checked-out' ? 'Checked Out' :
                          visitor.status.charAt(0).toUpperCase() + visitor.status.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {visitor.status === 'active' ? (
-                          <Button variant="outline" size="sm" className="h-8">
-                            Check Out
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="icon">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <Button variant="ghost" size="icon">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

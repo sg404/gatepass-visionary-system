@@ -10,8 +10,6 @@ export const mockAccessLogs: AccessLog[] = [
     description: 'Logged into Vehicle Pass System',
     entryGateOldSite: 'No Guard',
     exitGateOldSite: 'No Guard',
-    entryGateNewSite: 'No Guard',
-    exitGateNewSite: 'No Guard',
     dutyType: '',
     site: 'System',
     temporaryPassDetails: ''
@@ -24,8 +22,6 @@ export const mockAccessLogs: AccessLog[] = [
     description: 'Logged into Entry Gate system (Old Site)',
     entryGateOldSite: 'Logging In',
     exitGateOldSite: 'No Guard',
-    entryGateNewSite: 'No Guard',
-    exitGateNewSite: 'No Guard',
     dutyType: 'Morning',
     site: 'Old Site',
     temporaryPassDetails: ''
@@ -38,8 +34,6 @@ export const mockAccessLogs: AccessLog[] = [
     description: 'Guard on duty at Entry Gate (Old Site)',
     entryGateOldSite: 'On Duty',
     exitGateOldSite: 'No Guard',
-    entryGateNewSite: 'No Guard',
-    exitGateNewSite: 'No Guard',
     dutyType: 'Morning',
     site: 'Old Site',
     temporaryPassDetails: ''
@@ -52,8 +46,6 @@ export const mockAccessLogs: AccessLog[] = [
     description: 'Logged into Exit Gate system (Old Site)',
     entryGateOldSite: 'On Duty',
     exitGateOldSite: 'Logging In',
-    entryGateNewSite: 'No Guard',
-    exitGateNewSite: 'No Guard',
     dutyType: 'Morning',
     site: 'Old Site',
     temporaryPassDetails: ''

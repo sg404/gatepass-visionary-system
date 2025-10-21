@@ -7,8 +7,6 @@ export interface AccessLog {
   description: string;
   entryGateOldSite: string;
   exitGateOldSite: string;
-  entryGateNewSite: string;
-  exitGateNewSite: string;
   dutyType: string;
   site: string;
   temporaryPassDetails: string;
