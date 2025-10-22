@@ -24,7 +24,12 @@ const GuardLogin = () => {
   const handleRoleSelection = () => {
     // Store guard session with selected role
     localStorage.setItem('guardSession', JSON.stringify({ username, role: selectedRole }));
-    navigate('/guard-dashboard');
+    // Navigate to appropriate dashboard based on role
+    if (selectedRole === 'entry') {
+      navigate('/entry-guard-dashboard');
+    } else {
+      navigate('/exit-guard-dashboard');
+    }
   };
 
   const handleBackToLogin = () => {
@@ -66,6 +71,9 @@ const GuardLogin = () => {
                 <LogIn className="h-4 w-4 mr-2" />
                 Login
               </Button>
+              <Button variant="link" className="w-full text-sm">
+                Forgot Password?
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -92,9 +100,6 @@ const GuardLogin = () => {
             >
               <Shield className="h-4 w-4 mr-2" />
               Entry Guard
-              <span className="ml-auto text-xs text-muted-foreground">
-                Vehicle detection & pass issuance
-              </span>
             </Button>
 
             <Button
@@ -104,9 +109,6 @@ const GuardLogin = () => {
             >
               <LogOut className="h-4 w-4 mr-2" />
               Exit Guard
-              <span className="ml-auto text-xs text-muted-foreground">
-                Pass verification & exit confirmation
-              </span>
             </Button>
           </div>
 

@@ -8,9 +8,14 @@ import Reports from '@/pages/Reports';
 import AccessLogs from '@/pages/AccessLogs';
 import VehicleEntryLogs from '@/pages/VehicleEntryLogs';
 import RFIDManagement from '@/pages/RFIDManagement';
+import Violations from '@/pages/Violations';
 import NotFound from '@/pages/NotFound';
+import LoginPage from '@/pages/LoginPage';
+import AdminLogin from '@/pages/AdminLogin';
 import GuardLogin from '@/pages/GuardLogin';
 import GuardDashboard from '@/pages/GuardDashboard';
+import EntryGuardDashboard from '@/pages/EntryGuardDashboard';
+import ExitGuardDashboard from '@/pages/ExitGuardDashboard';
 import GuardVehicleLogs from '@/pages/GuardVehicleLogs';
 
 function App() {
@@ -25,9 +30,14 @@ function App() {
         <Route path="/access-logs" element={<AccessLogs />} />
         <Route path="/vehicle-entry-logs" element={<VehicleEntryLogs />} />
         <Route path="/rfid-management" element={<RFIDManagement />} />
+        <Route path="/violations" element={<Violations />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/guard-login" element={<GuardLogin />} />
         <Route path="/guard-dashboard" element={<GuardDashboard />} />
+        <Route path="/entry-guard-dashboard" element={<EntryGuardDashboard />} />
+        <Route path="/exit-guard-dashboard" element={<ExitGuardDashboard />} />
         <Route path="/guard/vehicle-logs" element={<GuardVehicleLogs />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -5,17 +5,37 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Car, Users, LogOut, FileText, GraduationCap, UserCheck, Camera, Bike, Truck, RefreshCw, CheckCircle, XCircle, Search } from 'lucide-react';
+import { Car, Users, LogOut, FileText, GraduationCap, UserCheck, Camera, Bike, Truck, RefreshCw, CheckCircle, XCircle, Search, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import { addViolation, hasActiveViolations, getSuspendedVehicles } from '@/utils/violationsStorage';
+import { addNotification, getUnacknowledgedNotifications, acknowledgeNotification } from '@/utils/notifications';
 const GuardDashboard = () => {
   const [currentGuard, setCurrentGuard] = useState<any>(null);
   const navigate = useNavigate();
 
   // Detection status (for entry guard)
   const [detectionStatus, setDetectionStatus] = useState<'idle' | 'detecting' | 'detected'>('idle');
+
+  // Detection status (for exit guard)
+  const [exitDetectionStatus, setExitDetectionStatus] = useState<'idle' | 'detecting' | 'detected'>('idle');
+
+  // Current exiting vehicle info - starts empty (for exit guard)
+  const [currentExitingVehicle, setCurrentExitingVehicle] = useState({
+    plateNumber: '-',
+    rfidTag: '-',
+    owner: '-',
+    vehicle: '-',
+    color: '-',
+    time: '-',
+    date: '-',
+    ownerType: '-',
+    isAuthorized: true,
+    timeIn: '-',
+    hoursStayed: 0
+  });
 
   // Mock data for vehicle counts
   const [vehicleCounts, setVehicleCounts] = useState({
@@ -60,6 +80,20 @@ const GuardDashboard = () => {
   // Dialog state (for entry guard)
   const [isVisitorDialogOpen, setIsVisitorDialogOpen] = useState(false);
 
+  // Violation reporting state (for both guards)
+  const [violationForm, setViolationForm] = useState({
+    licensePlate: '',
+    ownerName: '',
+    ownerType: 'Student',
+    violationType: 'Parking Violation',
+    description: '',
+    severity: 'medium',
+    location: '',
+    image: null as File | null
+  });
+  const [isViolationDialogOpen, setIsViolationDialogOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLogoutConfirmAdmin, setShowLogoutConfirmAdmin] = useState(false);
   // Exit guard verification state
   const [exitVerification, setExitVerification] = useState({
     passId: '',
@@ -182,6 +216,55 @@ const GuardDashboard = () => {
 
     return () => clearInterval(interval);
   }, [detectionStatus, currentGuard]);
+
+  // Simulate vehicle detection (exit guard only)
+  useEffect(() => {
+    if (currentGuard?.role !== 'exit') return;
+
+    const interval = setInterval(() => {
+      if (Math.random() > 0.95 && exitDetectionStatus === 'idle') {
+        setExitDetectionStatus('detecting');
+
+        setTimeout(() => {
+          const randomVehicle = mockVehicles[Math.floor(Math.random() * mockVehicles.length)];
+          const timeIn = new Date(Date.now() - Math.random() * 8 * 60 * 60 * 1000); // Random time in past 8 hours
+          const timeOut = new Date();
+          const hoursStayed = Math.round((timeOut.getTime() - timeIn.getTime()) / (1000 * 60 * 60) * 10) / 10; // Hours with 1 decimal
+
+          const detectedVehicle = {
+            ...randomVehicle,
+            time: timeOut.toLocaleTimeString(),
+            date: timeOut.toLocaleDateString(),
+            timeIn: timeIn.toLocaleTimeString(),
+            hoursStayed: hoursStayed
+          };
+
+          setCurrentExitingVehicle(detectedVehicle);
+          setExitDetectionStatus('detected');
+
+          // Auto clear after 30 seconds for exiting vehicles
+          setTimeout(() => {
+            setExitDetectionStatus('idle');
+            setCurrentExitingVehicle({
+              plateNumber: '-',
+              rfidTag: '-',
+              owner: '-',
+              vehicle: '-',
+              color: '-',
+              time: '-',
+              date: '-',
+              ownerType: '-',
+              isAuthorized: true,
+              timeIn: '-',
+              hoursStayed: 0
+            });
+          }, 30000);
+        }, 2000);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [exitDetectionStatus, currentGuard]);
 
   const handleLogout = () => {
     localStorage.removeItem('guardSession');
@@ -327,6 +410,52 @@ const GuardDashboard = () => {
     });
   };
 
+  // Violation reporting function (for both guards)
+  const handleReportViolation = () => {
+    if (!violationForm.licensePlate || !violationForm.violationType || !violationForm.description) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    // Create violation in shared storage
+    const newViolation = addViolation({
+      plateNumber: violationForm.licensePlate,
+      ownerName: violationForm.ownerName,
+      ownerType: violationForm.ownerType,
+      violationType: violationForm.violationType,
+      description: violationForm.description,
+      severity: violationForm.severity as 'low' | 'medium' | 'high',
+      status: 'pending',
+      reportedBy: currentGuard?.username || 'Guard',
+      location: violationForm.location,
+      evidence: violationForm.image ? ['uploaded_image.jpg'] : []
+    });
+
+    // Create notification for violation
+    addNotification({
+      type: 'violation',
+      title: 'New Violation Reported',
+      message: `${violationForm.violationType} reported for ${violationForm.licensePlate}`,
+      plateNumber: violationForm.licensePlate,
+      priority: violationForm.severity === 'high' ? 'high' : violationForm.severity === 'medium' ? 'medium' : 'low'
+    });
+
+    alert(`Violation Reported Successfully!\nViolation ID: ${newViolation.id}\nPlate: ${violationForm.licensePlate}\nType: ${violationForm.violationType}\nSeverity: ${violationForm.severity}`);
+
+    // Reset form
+    setViolationForm({
+      licensePlate: '',
+      ownerName: '',
+      ownerType: 'Student',
+      violationType: 'Parking Violation',
+      description: '',
+      severity: 'medium',
+      location: '',
+      image: null
+    });
+    setIsViolationDialogOpen(false);
+  };
+
   const getCapacityStatus = (occupied: number, total: number) => {
     const percentage = (occupied / total) * 100;
     if (percentage >= 100) return { color: 'text-red-600', status: 'Full', progressColor: 'bg-red-500' };
@@ -341,669 +470,911 @@ const GuardDashboard = () => {
   // Render Entry Guard View
   if (currentGuard?.role === 'entry') {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-white font-medium text-sm">GP</span>
-            </div>
-            <h1 className="text-xl font-semibold">Entry Guard Dashboard</h1>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {currentGuard?.username} (Entry Guard)
-            </span>
-            <Button variant="outline" size="sm" onClick={() => navigate('/guard/vehicle-logs')}>
-              <FileText className="h-4 w-4 mr-2" />
-              View Logs
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </header>
-
-        <main className="p-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left Panel - Large */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Live ANPR Camera Feed */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Live ANPR Camera Feed
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[36rem] bg-muted rounded-lg flex items-center justify-center relative">
-                    {detectionStatus === 'idle' && (
-                      <div className="text-center space-y-2">
-                        <Camera className="h-12 w-12 text-muted-foreground mx-auto" />
-                        <p className="text-muted-foreground">Waiting for vehicle...</p>
-                        <Badge variant="outline">ANPR Active</Badge>
-                      </div>
-                    )}
-
-                    {detectionStatus === 'detecting' && (
-                      <div className="text-center space-y-2">
-                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                          <Camera className="h-8 w-8 text-blue-600" />
-                        </div>
-                        <p className="text-blue-600 font-medium">Detecting vehicle...</p>
-                        <Badge variant="secondary">Scanning</Badge>
-                      </div>
-                    )}
-
-                    {detectionStatus === 'detected' && (
-                      <div className="text-center space-y-4">
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
-                          currentVehicle.isAuthorized ? 'bg-green-100' : 'bg-red-100'
-                        }`}>
-                          <Car className={`h-8 w-8 ${
-                            currentVehicle.isAuthorized ? 'text-green-600' : 'text-red-600'
-                          }`} />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="font-bold text-lg">{currentVehicle.plateNumber}</p>
-                          <p className="text-sm text-muted-foreground">{currentVehicle.owner}</p>
-                          <Badge variant={currentVehicle.isAuthorized ? 'secondary' : 'destructive'}>
-                            {currentVehicle.ownerType}
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Vehicle Type Cards */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 h-fit">
-                <Card className="bg-white">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Bike className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium">2 Wheeler</p>
-                        <p className="text-2xl font-bold">{vehicleCounts.twowheeler}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Car className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="text-sm font-medium">3 Wheeler</p>
-                        <p className="text-2xl font-bold">{vehicleCounts.threewheeler}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Car className="h-5 w-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm font-medium">4 Wheeler</p>
-                        <p className="text-2xl font-bold">{vehicleCounts.fourwheeler}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-5 w-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm font-medium">6+ Wheeler</p>
-                        <p className="text-2xl font-bold">{vehicleCounts.sixpluswheeler}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+      <>
+        <div className="min-h-screen bg-background">
+          <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
+                <span className="text-white font-medium text-sm">GP</span>
               </div>
+              <h1 className="text-xl font-semibold">Entry Guard Dashboard</h1>
             </div>
 
-            {/* Right Panel - Small */}
-            <div className="space-y-6">
-              {/* Vehicle & Owner Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Car className="h-5 w-5" />
-                    Vehicle & Owner Info
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium text-muted-foreground">Plate:</p>
-                      <p className="font-mono font-bold">{currentVehicle.plateNumber}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">RFID:</p>
-                      <p className="font-mono">{currentVehicle.rfidTag}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Owner:</p>
-                      <p>{currentVehicle.owner}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Vehicle:</p>
-                      <p>{currentVehicle.vehicle}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Color:</p>
-                      <p>{currentVehicle.color}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Time:</p>
-                      <p>{currentVehicle.time}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Date:</p>
-                      <p>{currentVehicle.date}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-muted-foreground">Owner Type:</p>
-                      <p>{currentVehicle.ownerType}</p>
-                    </div>
-                  </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {currentGuard?.username} (Entry Guard)
+              </span>
 
-                  <div className="flex gap-2">
-                    <Button onClick={handleClearDetection} variant="outline" className="flex-1">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Clear
-                    </Button>
-                    {!currentVehicle.isAuthorized && detectionStatus === 'detected' && (
-                      <Dialog open={isVisitorDialogOpen} onOpenChange={setIsVisitorDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button className="flex-1">
-                            Issue Pass
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Issue Temporary Pass</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="fullName">Full Name</Label>
-                              <Input
-                                id="fullName"
-                                value={visitorForm.fullName}
-                                onChange={(e) => setVisitorForm({ ...visitorForm, fullName: e.target.value })}
-                                placeholder="Enter visitor's full name"
-                              />
-                            </div>
+              <Button variant="outline" size="sm" className="bg-red-500 text-white hover:bg-red-600" onClick={() => setIsViolationDialogOpen(true)}>
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Report Violation
+              </Button>
 
-                            <div>
-                              <Label htmlFor="licensePlate">License Plate</Label>
-                              <Input
-                                id="licensePlate"
-                                value={visitorForm.licensePlate}
-                                onChange={(e) => setVisitorForm({ ...visitorForm, licensePlate: e.target.value })}
-                                placeholder="Enter license plate"
-                              />
-                            </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </header>
 
-                            <div>
-                              <Label htmlFor="purpose">Purpose of Visit</Label>
-                              <Select value={visitorForm.purpose} onValueChange={(value) => setVisitorForm({ ...visitorForm, purpose: value })}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select purpose" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="delivery">Delivery</SelectItem>
-                                  <SelectItem value="meeting-dean">Meeting with Dean</SelectItem>
-                                  <SelectItem value="meeting-faculty">Meeting with Faculty</SelectItem>
-                                  <SelectItem value="meeting-staff">Meeting with Staff</SelectItem>
-                                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                                  <SelectItem value="event">Event/Program</SelectItem>
-                                  <SelectItem value="others">Others</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+          <main className="p-6">
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Left Panel - Large */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Live ANPR Camera Feed */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Camera className="h-5 w-5" />
+                      Live ANPR Camera Feed
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[36rem] bg-muted rounded-lg flex items-center justify-center relative">
+                      {detectionStatus === 'idle' && (
+                        <div className="text-center space-y-2">
+                          <Camera className="h-12 w-12 text-muted-foreground mx-auto" />
+                          <p className="text-muted-foreground">Waiting for vehicle...</p>
+                          <Badge variant="outline">ANPR Active</Badge>
+                        </div>
+                      )}
 
-                            <div>
-                              <Label htmlFor="tempPassId">Temporary Pass ID</Label>
-                              <Input
-                                id="tempPassId"
-                                value={visitorForm.tempPassId}
-                                onChange={(e) => setVisitorForm({ ...visitorForm, tempPassId: e.target.value })}
-                                placeholder="Enter temporary pass ID (e.g., TP001234)"
-                              />
-                            </div>
-
-                            <Button onClick={handleIssueTemporaryPass} className="w-full">
-                              Issue Temporary Pass
-                            </Button>
+                      {detectionStatus === 'detecting' && (
+                        <div className="text-center space-y-2">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                            <Camera className="h-8 w-8 text-blue-600" />
                           </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                          <p className="text-blue-600 font-medium">Detecting vehicle...</p>
+                          <Badge variant="secondary">Scanning</Badge>
+                        </div>
+                      )}
 
-              {/* Total Parking Slots */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                      {detectionStatus === 'detected' && (
+                        <div className="text-center space-y-4">
+                          {currentVehicle.isAuthorized ? (
+                            <>
+                              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                                <Car className="h-8 w-8 text-green-600" />
+                              </div>
+                              <div className="space-y-2">
+                                <p className="font-bold text-lg">{currentVehicle.plateNumber}</p>
+                                <p className="text-sm text-muted-foreground">{currentVehicle.owner}</p>
+                                <Badge variant="secondary">
+                                  {currentVehicle.ownerType}
+                                </Badge>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                                <Car className="h-8 w-8 text-red-600" />
+                              </div>
+                              <div className="space-y-2">
+                                <p className="font-bold text-lg text-red-600">Unauthorized Vehicle</p>
+                                <p className="text-sm text-muted-foreground">License Plate: {currentVehicle.plateNumber}</p>
+                                <p className="text-sm text-muted-foreground">Owner: {currentVehicle.owner}</p>
+                                <p className="text-xs text-muted-foreground">Detected: {currentVehicle.date} at {currentVehicle.time}</p>
+                              </div>
+
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Vehicle Type Cards */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 h-fit">
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
                       <div className="flex items-center gap-2">
-                        <Car className="h-5 w-5" />
+                        <Bike className="h-5 w-5 text-blue-600" />
                         <div>
-                          <p className="text-sm font-medium">Total Parking Slots</p>
-                          <p className="text-2xl font-bold"><span className="text-xl font-extrabold">{totalOccupied}</span>/{totalSlots}</p>
+                          <p className="text-sm font-medium">2 Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.twowheeler}</p>
                         </div>
                       </div>
-                      <Badge variant={capacityStatus.status === 'Full' ? 'destructive' : 'secondary'}
-                             className={capacityStatus.color}>
-                        {capacityStatus.status}
-                      </Badge>
-                    </div>
-                    <Progress value={occupancyPercentage} className="h-2" />
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
 
-              {/* Owner Type Cards */}
-              <div className="grid gap-4 grid-cols-1">
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4 text-purple-600" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Students</p>
-                        <p className="text-lg font-bold"><span className="text-xl font-extrabold">{ownerCounts.students}</span>/{studentAllocation}</p>
-                        <Progress value={(ownerCounts.students / studentAllocation) * 100} className="h-2 mt-2" style={{ '--progress-foreground': '#7c3aed' } as React.CSSProperties} />
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium">3 Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.threewheeler}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-4 w-4 text-green-600" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Faculty</p>
-                        <p className="text-lg font-bold"><span className="text-xl font-extrabold">{ownerCounts.faculty}</span>/{facultyAllocation}</p>
-                        <Progress value={(ownerCounts.faculty / facultyAllocation) * 100} className="h-2 mt-2" style={{ '--progress-foreground': '#16a34a' } as React.CSSProperties} />
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <p className="text-sm font-medium">4 Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.fourwheeler}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-yellow-600" />
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-5 w-5 text-orange-600" />
+                        <div>
+                          <p className="text-sm font-medium">6+ Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.sixpluswheeler}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+              </div>
+
+              {/* Right Panel - Small */}
+              <div className="space-y-6">
+                {/* Vehicle & Owner Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="h-5 w-5" />
+                      Vehicle & Owner Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-sm font-medium">Guests</p>
-                        <p className="text-xl font-extrabold">{ownerCounts.guests}</p>
+                        <p className="font-medium text-muted-foreground">Plate:</p>
+                        <p className="font-mono font-bold">{currentVehicle.plateNumber}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">RFID:</p>
+                        <p className="font-mono">{currentVehicle.rfidTag}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Owner:</p>
+                        <p>{currentVehicle.owner}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Vehicle:</p>
+                        <p>{currentVehicle.vehicle}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Color:</p>
+                        <p>{currentVehicle.color}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Time:</p>
+                        <p>{currentVehicle.time}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Date:</p>
+                        <p>{currentVehicle.date}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Owner Type:</p>
+                        <p>{currentVehicle.ownerType}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {!currentVehicle.isAuthorized && detectionStatus === 'detected' ? (
+                        <Button onClick={handleClearDetection} variant="outline" className="flex-1 bg-red-500 text-white hover:bg-red-600">
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Deny Entry
+                        </Button>
+                      ) : (
+                        <Button onClick={handleClearDetection} variant="outline" className="flex-1">
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Clear
+                        </Button>
+                      )}
+                      {!currentVehicle.isAuthorized && detectionStatus === 'detected' && (
+                        <Dialog open={isVisitorDialogOpen} onOpenChange={setIsVisitorDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button className="flex-1">
+                              Issue Pass
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Issue Temporary Pass</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label htmlFor="fullName">Full Name</Label>
+                                <Input
+                                  id="fullName"
+                                  value={visitorForm.fullName}
+                                  onChange={(e) => setVisitorForm({ ...visitorForm, fullName: e.target.value })}
+                                  placeholder="Enter visitor's full name"
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor="licensePlate">License Plate</Label>
+                                <Input
+                                  id="licensePlate"
+                                  value={visitorForm.licensePlate}
+                                  onChange={(e) => setVisitorForm({ ...visitorForm, licensePlate: e.target.value })}
+                                  placeholder="Enter license plate"
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor="purpose">Purpose of Visit</Label>
+                                <Select value={visitorForm.purpose} onValueChange={(value) => setVisitorForm({ ...visitorForm, purpose: value })}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select purpose" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="delivery">Delivery</SelectItem>
+                                    <SelectItem value="meeting-dean">Meeting with Dean</SelectItem>
+                                    <SelectItem value="meeting-faculty">Meeting with Faculty</SelectItem>
+                                    <SelectItem value="meeting-staff">Meeting with Staff</SelectItem>
+                                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                                    <SelectItem value="event">Event/Program</SelectItem>
+                                    <SelectItem value="others">Others</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label htmlFor="tempPassId">Temporary Pass ID</Label>
+                                <Input
+                                  id="tempPassId"
+                                  value={visitorForm.tempPassId}
+                                  onChange={(e) => setVisitorForm({ ...visitorForm, tempPassId: e.target.value })}
+                                  placeholder="Enter temporary pass ID (e.g., TP001234)"
+                                />
+                              </div>
+
+                              <Button onClick={handleIssueTemporaryPass} className="w-full">
+                                Issue Temporary Pass
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Parking Overview Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="h-5 w-5" />
+                      Parking Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Total Slots Summary */}
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Total</p>
+                        <p className="text-xl font-bold">{totalSlots}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Occupied</p>
+                        <p className="text-xl font-bold">{totalOccupied}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Available</p>
+                        <p className="text-xl font-bold">{Math.max(0, totalSlots - totalOccupied)}</p>
+                      </div>
+                    </div>
+                    {/* Occupancy Progress */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Occupancy</span>
+                        <span>{occupancyPercentage.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={occupancyPercentage} className="h-2" />
+                      <div className="flex justify-center mt-1">
+                        <Badge variant={capacityStatus.status === 'Full' ? 'destructive' : capacityStatus.status === 'Near Full' ? 'secondary' : 'outline'} className={capacityStatus.color}>
+                          {capacityStatus.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    {/* Role Allocations */}
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-muted-foreground">Allocations</p>
+                      <div className="grid gap-2">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="h-4 w-4 text-blue-600" />
+                          <div className="flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Students</span>
+                              <span>{ownerCounts.students} / {studentAllocation}</span>
+                            </div>
+                            <Progress value={(ownerCounts.students / studentAllocation) * 100} className="h-1.5 mt-1" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="h-4 w-4 text-green-600" />
+                          <div className="flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Faculty</span>
+                              <span>{ownerCounts.faculty} / {facultyAllocation}</span>
+                            </div>
+                            <Progress value={(ownerCounts.faculty / facultyAllocation) * 100} className="h-1.5 mt-1" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-purple-600" />
+                          <div className="flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Guests</span>
+                              <span>{ownerCounts.guests}</span>
+                            </div>
+                            <Progress value={Math.min(100, (ownerCounts.guests / 20) * 100)} className="h-1.5 mt-1" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
             </div>
-          </div>
-        </main>
-      </div>
+          </main>
+
+        </div>
+      </>
     );
   }
 
-  // Mock system alerts for exit guard
-  const systemAlerts = [
-    { type: 'warning', message: 'Parking nearing capacity (85% occupied)', icon: '⚠️' },
-    { type: 'info', message: '2 unauthorized vehicles detected', icon: '🚫' },
-    { type: 'alert', message: '3 visitors overstaying (over 4 hours)', icon: '⏰' }
-  ];
 
-  // Mock recent movements data
-  const recentMovements = [
-    { plate: 'ABC1234', ownerType: 'Student', timeIn: '8:30 AM', timeOut: '4:15 PM', status: 'Exited' },
-    { plate: 'XYZ5678', ownerType: 'Faculty', timeIn: '9:00 AM', timeOut: null, status: 'Inside' },
-    { plate: 'VIS001', ownerType: 'Guest', timeIn: '10:15 AM', timeOut: '2:30 PM', status: 'Exited' },
-    { plate: 'DEF9012', ownerType: 'Student', timeIn: '7:45 AM', timeOut: null, status: 'Inside' },
-    { plate: 'GHI3456', ownerType: 'Faculty', timeIn: '8:00 AM', timeOut: null, status: 'Inside' },
-    { plate: 'VIS002', ownerType: 'Guest', timeIn: '11:00 AM', timeOut: null, status: 'Overstay' }
-  ];
 
   // Mock violations
   const violations = [
-    { plate: 'VIS002', type: 'Overstay', description: 'Visitor exceeded 4-hour limit', severity: 'high' },
     { plate: 'XYZ9999', type: 'Unauthorized', description: 'No valid RFID tag', severity: 'medium' }
   ];
 
   // Render Exit Guard View
   if (currentGuard?.role === 'exit') {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Header with Alerts */}
-        <header className="border-b border-border bg-background/80 backdrop-blur-sm">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-                  <span className="text-white font-medium text-sm">GP</span>
-                </div>
-                <h1 className="text-xl font-semibold">Exit Gate – Campus Vehicle Overview</h1>
+      <>
+        <div className="min-h-screen bg-background">
+          <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
+                <span className="text-white font-medium text-sm">GP</span>
               </div>
-
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
-                  Welcome, {currentGuard?.username} (Exit Guard)
-                </span>
-                <Button variant="outline" size="sm" onClick={() => navigate('/guard/vehicle-logs')}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  View Logs
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
+              <h1 className="text-xl font-semibold">Exit Guard Dashboard</h1>
             </div>
 
-            {/* System Alerts */}
-            <div className="mt-4 space-y-2">
-              {systemAlerts.map((alert, index) => (
-                <div key={index} className={`flex items-center gap-2 p-2 rounded-lg text-sm ${
-                  alert.type === 'warning' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-                  alert.type === 'alert' ? 'bg-red-50 text-red-800 border border-red-200' :
-                  'bg-blue-50 text-blue-800 border border-blue-200'
-                }`}>
-                  <span>{alert.icon}</span>
-                  <span>{alert.message}</span>
-                </div>
-              ))}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {currentGuard?.username} (Exit Guard)
+              </span>
+
+              <Button variant="outline" size="sm" className="bg-red-500 text-white hover:bg-red-600" onClick={() => setIsViolationDialogOpen(true)}>
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Report Violation
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="p-6 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Main Panel - Vehicles Inside / Parking Overview */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Total Parking Slots */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Car className="h-5 w-5" />
-                    Total Parking Slots
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-3xl font-bold">{totalOccupied}/{totalSlots}</p>
-                        <p className="text-sm text-muted-foreground">slots occupied</p>
-                      </div>
-                      <Badge variant={capacityStatus.status === 'Full' ? 'destructive' : 'secondary'}
-                             className={capacityStatus.color}>
-                        {capacityStatus.status}
-                      </Badge>
-                    </div>
-                    <Progress value={occupancyPercentage} className="h-3 rounded-full" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Owner Type Breakdown */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Owner Type Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="h-4 w-4 text-blue-600" />
-                        <span className="font-medium">Students</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{ownerCounts.students}/{studentAllocation}</span>
-                    </div>
-                    <Progress value={(ownerCounts.students / studentAllocation) * 100} className="h-2 rounded-full" style={{ '--progress-foreground': '#7c3aed' } as React.CSSProperties} />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">Faculty</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{ownerCounts.faculty}/{facultyAllocation}</span>
-                    </div>
-                    <Progress value={(ownerCounts.faculty / facultyAllocation) * 100} className="h-2 rounded-full" style={{ '--progress-foreground': '#16a34a' } as React.CSSProperties} />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-orange-600" />
-                        <span className="font-medium">Guests</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{ownerCounts.guests} (added to faculty)</span>
-                    </div>
-                    <Progress value={(ownerCounts.guests / (facultyAllocation - ownerCounts.faculty)) * 100} className="h-2 rounded-full" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Current Vehicles Inside Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Current Vehicles Inside Campus</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">{ownerCounts.students}</p>
-                      <p className="text-sm text-muted-foreground">Students</p>
-                    </div>
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">{ownerCounts.faculty}</p>
-                      <p className="text-sm text-muted-foreground">Faculty</p>
-                    </div>
-                    <div className="p-4 bg-orange-50 rounded-lg">
-                      <p className="text-2xl font-bold text-orange-600">{ownerCounts.guests}</p>
-                      <p className="text-sm text-muted-foreground">Guests</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-3xl font-bold">{totalOccupied}</p>
-                    <p className="text-sm text-muted-foreground">Total Vehicles Inside</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Secondary Panel - Visitor Pass Verification */}
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Search className="h-5 w-5" />
-                    Visitor Pass Verification
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="passId">Temporary Pass Input / Scan</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="passId"
-                        value={exitVerification.passId}
-                        onChange={(e) => setExitVerification({ ...exitVerification, passId: e.target.value })}
-                        placeholder="Enter pass ID (e.g., TP001234)"
-                        className="flex-1"
-                      />
-                      <Button onClick={handleVerifyPass} disabled={exitVerification.isVerifying}>
-                        {exitVerification.isVerifying ? 'Verifying...' : 'Verify'}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Verification Status */}
-                  {exitVerification.verificationStatus && (
-                    <div className="space-y-4">
-                      <div className={`flex items-center gap-2 p-4 rounded-lg ${
-                        exitVerification.verificationStatus === 'verified'
-                          ? 'bg-green-50 border border-green-200'
-                          : 'bg-red-50 border border-red-200'
-                      }`}>
-                        {exitVerification.verificationStatus === 'verified' ? (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-600" />
-                        )}
-                        <span className={`font-medium ${
-                          exitVerification.verificationStatus === 'verified' ? 'text-green-800' : 'text-red-800'
-                        }`}>
-                          {exitVerification.verificationStatus === 'verified' ? 'Pass Verified' : 'Invalid Pass ID'}
-                        </span>
-                      </div>
-
-                      {/* Visitor Info */}
-                      {exitVerification.visitorInfo && (
-                        <div className="grid grid-cols-1 gap-3 p-4 bg-gray-50 rounded-lg text-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Name:</span>
-                            <span className="font-semibold">{exitVerification.visitorInfo.fullName}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Vehicle Plate:</span>
-                            <span className="font-mono font-semibold">{exitVerification.visitorInfo.licensePlate}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Purpose:</span>
-                            <span>{exitVerification.visitorInfo.purpose}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Time In:</span>
-                            <span>{exitVerification.visitorInfo.timeIn}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Pass ID:</span>
-                            <span className="font-mono font-semibold">{exitVerification.visitorInfo.id}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Owner Type:</span>
-                            <span>Guest</span>
-                          </div>
+          <main className="p-6 space-y-6">
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Main Panel - Vehicles Inside */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Live Exit ANPR Camera Feed */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Camera className="h-5 w-5" />
+                      Live Exit ANPR Camera Feed
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[36rem] bg-muted rounded-lg flex items-center justify-center relative">
+                      {exitDetectionStatus === 'idle' && (
+                        <div className="text-center space-y-2">
+                          <Camera className="h-12 w-12 text-muted-foreground mx-auto" />
+                          <p className="text-muted-foreground">Waiting for exiting vehicle...</p>
+                          <Badge variant="outline">ANPR Active</Badge>
                         </div>
                       )}
 
+                      {exitDetectionStatus === 'detecting' && (
+                        <div className="text-center space-y-2">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                            <Camera className="h-8 w-8 text-blue-600" />
+                          </div>
+                          <p className="text-blue-600 font-medium">Detecting exiting vehicle...</p>
+                          <Badge variant="secondary">Scanning</Badge>
+                        </div>
+                      )}
+
+                      {exitDetectionStatus === 'detected' && (
+                        <div className="text-center space-y-4">
+                          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                            <Car className="h-8 w-8 text-green-600" />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="font-bold text-lg">{currentExitingVehicle.plateNumber}</p>
+                            <p className="text-sm text-muted-foreground">{currentExitingVehicle.owner}</p>
+                            <Badge variant="secondary">
+                              {currentExitingVehicle.ownerType}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Vehicle Type Cards */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 h-fit">
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Bike className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="text-sm font-medium">2 Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.twowheeler}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium">3 Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.threewheeler}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <p className="text-sm font-medium">4 Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.fourwheeler}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-5 w-5 text-orange-600" />
+                        <div>
+                          <p className="text-sm font-medium">6+ Wheeler</p>
+                          <p className="text-2xl font-bold">{vehicleCounts.sixpluswheeler}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+              </div>
+
+              {/* Secondary Panel - Visitor Pass Verification & Exiting Vehicle Info */}
+              <div className="space-y-6">
+                {/* Exiting Vehicle & Owner Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="h-5 w-5" />
+                      Exiting Vehicle & Owner Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium text-muted-foreground">Plate:</p>
+                        <p className="font-mono font-bold">{currentExitingVehicle.isAuthorized ? currentExitingVehicle.plateNumber : ''}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">RFID:</p>
+                        <p className="font-mono">{currentExitingVehicle.isAuthorized ? currentExitingVehicle.rfidTag : ''}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Owner:</p>
+                        <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.owner : ''}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Vehicle:</p>
+                        <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.vehicle : ''}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Color:</p>
+                        <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.color : ''}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Time In:</p>
+                        <p>{currentExitingVehicle.timeIn}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Time Out:</p>
+                        <p>{currentExitingVehicle.time}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Hours Stayed:</p>
+                        <p>{currentExitingVehicle.hoursStayed} hours</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Owner Type:</p>
+                        <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.ownerType : ''}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button onClick={() => {
+                        setExitDetectionStatus('idle');
+                        setCurrentExitingVehicle({
+                          plateNumber: '-',
+                          rfidTag: '-',
+                          owner: '-',
+                          vehicle: '-',
+                          color: '-',
+                          time: '-',
+                          date: '-',
+                          ownerType: '-',
+                          isAuthorized: true,
+                          timeIn: '-',
+                          hoursStayed: 0
+                        });
+                      }} variant="outline" className="flex-1">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Clear
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      Visitor Pass Verification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="passId">Temporary Pass Input / Scan</Label>
                       <div className="flex gap-2">
-                        <Button
-                          onClick={handleConfirmExit}
-                          disabled={exitVerification.verificationStatus !== 'verified'}
+                        <Input
+                          id="passId"
+                          value={exitVerification.passId}
+                          onChange={(e) => setExitVerification({ ...exitVerification, passId: e.target.value })}
+                          placeholder="Enter pass ID (e.g., TP001234)"
                           className="flex-1"
-                        >
-                          Confirm Exit
-                        </Button>
-                        <Button onClick={handleClearVerification} variant="outline" className="flex-1">
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Clear / Reset
+                        />
+                        <Button onClick={handleVerifyPass} disabled={exitVerification.isVerifying}>
+                          {exitVerification.isVerifying ? 'Verifying...' : 'Verify'}
                         </Button>
                       </div>
                     </div>
-                  )}
+
+                    {/* Verification Status */}
+                    {exitVerification.verificationStatus && (
+                      <div className="space-y-4">
+                        <div className={`flex items-center gap-2 p-4 rounded-lg ${
+                          exitVerification.verificationStatus === 'verified'
+                            ? 'bg-green-50 border border-green-200'
+                            : 'bg-red-50 border border-red-200'
+                        }`}>
+                          {exitVerification.verificationStatus === 'verified' ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          )}
+                          <span className={`font-medium ${
+                            exitVerification.verificationStatus === 'verified' ? 'text-green-800' : 'text-red-800'
+                          }`}>
+                            {exitVerification.verificationStatus === 'verified' ? 'Pass Verified' : 'Invalid Pass ID'}
+                          </span>
+                        </div>
+
+                        {/* Visitor Info */}
+                        {exitVerification.visitorInfo && (
+                          <div className="grid grid-cols-1 gap-3 p-4 bg-gray-50 rounded-lg text-sm">
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className="font-medium text-muted-foreground">Name:</span>
+                              <span className="font-semibold">{exitVerification.visitorInfo.fullName}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className="font-medium text-muted-foreground">Vehicle Plate:</span>
+                              <span className="font-mono font-semibold">{exitVerification.visitorInfo.licensePlate}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className="font-medium text-muted-foreground">Purpose:</span>
+                              <span>{exitVerification.visitorInfo.purpose}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className="font-medium text-muted-foreground">Time In:</span>
+                              <span>{exitVerification.visitorInfo.timeIn}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className="font-medium text-muted-foreground">Pass ID:</span>
+                              <span className="font-mono font-semibold">{exitVerification.visitorInfo.id}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <span className="font-medium text-muted-foreground">Owner Type:</span>
+                              <span>Guest</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleConfirmExit}
+                            disabled={exitVerification.verificationStatus !== 'verified'}
+                            className="flex-1"
+                          >
+                            Confirm Exit
+                          </Button>
+                          <Button onClick={handleClearVerification} variant="outline" className="flex-1">
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Clear / Reset
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Parking Overview Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="h-5 w-5" />
+                      Parking Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Total Slots Summary */}
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Total</p>
+                        <p className="text-xl font-bold">{totalSlots}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Occupied</p>
+                        <p className="text-xl font-bold">{totalOccupied}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Available</p>
+                        <p className="text-xl font-bold">{Math.max(0, totalSlots - totalOccupied)}</p>
+                      </div>
+                    </div>
+                    {/* Occupancy Progress */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Occupancy</span>
+                        <span>{occupancyPercentage.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={occupancyPercentage} className="h-2" />
+                      <div className="flex justify-center mt-1">
+                        <Badge variant={capacityStatus.status === 'Full' ? 'destructive' : capacityStatus.status === 'Near Full' ? 'secondary' : 'outline'} className={capacityStatus.color}>
+                          {capacityStatus.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    {/* Role Allocations */}
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-muted-foreground">Allocations</p>
+                      <div className="grid gap-2">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="h-4 w-4 text-blue-600" />
+                          <div className="flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Students</span>
+                              <span>{ownerCounts.students} / {studentAllocation}</span>
+                            </div>
+                            <Progress value={(ownerCounts.students / studentAllocation) * 100} className="h-1.5 mt-1" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="h-4 w-4 text-green-600" />
+                          <div className="flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Faculty</span>
+                              <span>{ownerCounts.faculty} / {facultyAllocation}</span>
+                            </div>
+                            <Progress value={(ownerCounts.faculty / facultyAllocation) * 100} className="h-1.5 mt-1" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-purple-600" />
+                          <div className="flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Guests</span>
+                              <span>{ownerCounts.guests}</span>
+                            </div>
+                            <Progress value={Math.min(100, (ownerCounts.guests / 20) * 100)} className="h-1.5 mt-1" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Bottom Section - Recent Movements */}
+            <div className="grid gap-6 lg:grid-cols-1">
+              {/* Recent Vehicle/Visitor Movements Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Recent Vehicle/Visitor Movements
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">License Plate</th>
+                          <th className="text-left p-2">Owner Type</th>
+                          <th className="text-left p-2">Time In</th>
+                          <th className="text-left p-2">Time Out</th>
+                          <th className="text-left p-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentVisitors.map((visitor, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="p-2 font-mono">{visitor.licensePlate}</td>
+                            <td className="p-2">Guest</td>
+                            <td className="p-2">{visitor.timeIn}</td>
+                            <td className="p-2">{visitor.timeOut || '-'}</td>
+                            <td className="p-2">
+                              <Badge variant={
+                                visitor.status === 'exited' ? 'secondary' :
+                                visitor.status === 'active' ? 'outline' :
+                                'destructive'
+                              }>
+                                {visitor.status === 'exited' ? 'Exited' : visitor.status === 'active' ? 'Inside' : visitor.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </CardContent>
               </Card>
             </div>
-          </div>
+          </main>
+        </div>
 
-          {/* Bottom Section - Recent Movements and Violations */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Recent Vehicle/Visitor Movements Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Recent Vehicle/Visitor Movements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">License Plate</th>
-                        <th className="text-left p-2">Owner Type</th>
-                        <th className="text-left p-2">Time In</th>
-                        <th className="text-left p-2">Time Out</th>
-                        <th className="text-left p-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentMovements.map((movement, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="p-2 font-mono">{movement.plate}</td>
-                          <td className="p-2">{movement.ownerType}</td>
-                          <td className="p-2">{movement.timeIn}</td>
-                          <td className="p-2">{movement.timeOut || '-'}</td>
-                          <td className="p-2">
-                            <Badge variant={
-                              movement.status === 'Exited' ? 'secondary' :
-                              movement.status === 'Overstay' ? 'destructive' :
-                              'outline'
-                            }>
-                              {movement.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Violation Reporting Dialog */}
+        <Dialog open={isViolationDialogOpen} onOpenChange={setIsViolationDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Report Violation</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="violationPlate">License Plate</Label>
+                <Input
+                  id="violationPlate"
+                  value={violationForm.licensePlate}
+                  onChange={(e) => setViolationForm({ ...violationForm, licensePlate: e.target.value })}
+                  placeholder="Enter license plate"
+                />
+              </div>
 
-            {/* Violations Panel */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5" />
-                  Pending Violations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {violations.map((violation, index) => (
-                    <div key={index} className={`p-3 rounded-lg border ${
-                      violation.severity === 'high' ? 'bg-red-50 border-red-200' :
-                      'bg-yellow-50 border-yellow-200'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-semibold">{violation.plate}</span>
-                        <Badge variant={violation.severity === 'high' ? 'destructive' : 'secondary'}>
-                          {violation.type}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{violation.description}</p>
-                    </div>
-                  ))}
-                  {violations.length === 0 && (
-                    <p className="text-center text-muted-foreground py-4">No pending violations</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
+              <div>
+                <Label htmlFor="ownerName">Owner Name</Label>
+                <Input
+                  id="ownerName"
+                  value={violationForm.ownerName}
+                  onChange={(e) => setViolationForm({ ...violationForm, ownerName: e.target.value })}
+                  placeholder="Enter owner name"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ownerType">Owner Type</Label>
+                <Select value={violationForm.ownerType} onValueChange={(value) => setViolationForm({ ...violationForm, ownerType: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select owner type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Student">Student</SelectItem>
+                    <SelectItem value="Faculty">Faculty</SelectItem>
+                    <SelectItem value="Staff">Staff</SelectItem>
+                    <SelectItem value="Guest">Guest</SelectItem>
+                    <SelectItem value="Others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="violationType">Violation Type</Label>
+                <Select value={violationForm.violationType} onValueChange={(value) => setViolationForm({ ...violationForm, violationType: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select violation type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unauthorized-parking">Unauthorized Parking</SelectItem>
+                    <SelectItem value="overstay">Overstay</SelectItem>
+                    <SelectItem value="wrong-zone">Wrong Zone</SelectItem>
+                    <SelectItem value="no-permit">No Permit</SelectItem>
+                    <SelectItem value="blocked-access">Blocked Access</SelectItem>
+                    <SelectItem value="others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="violationDescription">Description</Label>
+                <Textarea
+                  id="violationDescription"
+                  value={violationForm.description}
+                  onChange={(e) => setViolationForm({ ...violationForm, description: e.target.value })}
+                  placeholder="Describe the violation"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="violationSeverity">Severity</Label>
+                <Select value={violationForm.severity} onValueChange={(value) => setViolationForm({ ...violationForm, severity: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={violationForm.location}
+                  onChange={(e) => setViolationForm({ ...violationForm, location: e.target.value })}
+                  placeholder="Enter location (e.g., Parking Lot A, Block 3)"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="violationImage">Upload Image (Optional)</Label>
+                <Input
+                  id="violationImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setViolationForm({ ...violationForm, image: e.target.files ? e.target.files[0] : null })}
+                />
+              </div>
+
+              <Button onClick={handleReportViolation} className="w-full">
+                Report Violation
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 

@@ -13,7 +13,8 @@ import {
   FileText,
   ClipboardList,
   CarFront,
-  Radio
+  Radio,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -58,6 +59,11 @@ const navItems: NavItem[] = [
     label: 'RFID Management',
     href: '/rfid-management',
     icon: Radio,
+  },
+  {
+    label: 'Violations',
+    href: '/violations',
+    icon: AlertTriangle,
   },
   {
     label: 'Security',
@@ -137,8 +143,8 @@ const Sidebar = () => {
 
         <div className="p-4 border-t border-sidebar-border">
           <div className={cn(
-            "flex items-center",
-            !expanded && "justify-center"
+            "flex flex-col gap-3",
+            !expanded && "items-center"
           )}>
             {expanded ? (
               <div className="flex items-center gap-3">
@@ -155,6 +161,22 @@ const Sidebar = () => {
                 AD
               </div>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem('adminSession');
+                window.location.href = '/login';
+              }}
+              className={cn(
+                "text-sidebar-foreground hover:bg-sidebar-accent/50",
+                !expanded && "w-9 h-9 p-0"
+              )}
+            >
+              <LogOut className={cn("h-4 w-4", expanded && "mr-2")} />
+              {expanded && "Logout"}
+            </Button>
           </div>
         </div>
       </div>

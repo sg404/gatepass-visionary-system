@@ -1,11 +1,11 @@
-# RFID Management Page Implementation
+# Guard Dashboard Updates
 
 ## Tasks
-- [ ] Create RFIDManagement.tsx page with incident reporting section
-- [ ] Add RFID Tag Incident Report modal form
-- [ ] Implement offense count logic and payment status handling
-- [ ] Create table for displaying incident reports
-- [ ] Add RFID Expiration Tracker summary card
-- [ ] Add RFID Management route to App.tsx
-- [ ] Add RFID Management to sidebar navigation
-- [ ] Test functionality and UI interactions
+- [x] Separate entry and exit guard dashboards
+- [x] Update routing to use separate dashboards
+- [x] Update GuardLogin to navigate to appropriate dashboard
+- [ ] Move Parking Overview Card from left panel to right panel below Vehicle & Owner Info in Entry Guard dashboard
+- [ ] Add Vehicle Type Cards to main panel (left) after Live Exit ANPR in Exit Guard dashboard
+- [ ] Add Parking Overview Card to secondary panel (right) below Visitor Pass Verification in Exit Guard dashboard
+- [ ] Verify violation reporting functionality for both guards
+- [ ] Test dashboard layouts for both entry and exit guards
