@@ -11,6 +11,13 @@ export interface Violation {
   reportedAt: string;
   location: string;
   evidence: string[];
+  penalty?: {
+    type: string;
+    duration?: string;
+    appliedBy: string;
+    appliedAt: string;
+    notes: string;
+  };
   resolution?: {
     action: string;
     resolvedBy: string;
@@ -19,7 +26,7 @@ export interface Violation {
   };
 }
 
-const VIOLATIONS_STORAGE_KEY = 'gatepass_violations';
+const VIOLATIONS_STORAGE_KEY = 'smart_vehicle_gate_pass_violations';
 
 export const getViolations = (): Violation[] => {
   try {
@@ -71,16 +78,33 @@ export const hasActiveViolations = (plateNumber: string): boolean => {
   return violations.some(v => v.status !== 'resolved');
 };
 
+export const getVehiclePenalty = (plateNumber: string): { isSuspended: boolean; penalty: string; duration?: string } => {
+  const violations = getViolationsByPlate(plateNumber).filter(v => v.status !== 'resolved');
+  const offenseCount = violations.length;
+
+  if (offenseCount === 0) {
+    return { isSuspended: false, penalty: 'none' };
+  } else if (offenseCount === 1) {
+    return { isSuspended: false, penalty: 'warning' };
+  } else if (offenseCount === 2) {
+    return { isSuspended: true, penalty: 'suspension', duration: '1 month' };
+  } else if (offenseCount === 3) {
+    return { isSuspended: true, penalty: 'suspension', duration: '6 months' };
+  } else {
+    return { isSuspended: true, penalty: 'permanent deactivation' };
+  }
+};
+
 export const getSuspendedVehicles = (): string[] => {
   const violations = getViolations();
   const plateCounts: { [key: string]: number } = {};
 
-  // Count violations per plate
+  // Count unresolved violations per plate
   violations.forEach(v => {
-    if (v.status === 'resolved') return; // Only count unresolved violations
+    if (v.status === 'resolved') return;
     plateCounts[v.plateNumber] = (plateCounts[v.plateNumber] || 0) + 1;
   });
 
-  // Return plates with 3+ violations (suspended threshold)
-  return Object.keys(plateCounts).filter(plate => plateCounts[plate] >= 3);
+  // Return plates with 2+ violations (suspended threshold based on policy)
+  return Object.keys(plateCounts).filter(plate => plateCounts[plate] >= 2);
 };

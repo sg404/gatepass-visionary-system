@@ -9,7 +9,7 @@ export interface Notification {
   priority: 'low' | 'medium' | 'high';
 }
 
-const NOTIFICATIONS_STORAGE_KEY = 'gatepass_notifications';
+const NOTIFICATIONS_STORAGE_KEY = 'smart_vehicle_gate_pass_notifications';
 
 export const getNotifications = (): Notification[] => {
   try {

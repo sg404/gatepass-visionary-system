@@ -11,7 +11,9 @@ import RFIDManagement from '@/pages/RFIDManagement';
 import Violations from '@/pages/Violations';
 import NotFound from '@/pages/NotFound';
 import LoginPage from '@/pages/LoginPage';
+import Registration from '@/pages/Registration';
 import AdminLogin from '@/pages/AdminLogin';
+import AdminDashboard from '@/pages/AdminDashboard';
 import GuardLogin from '@/pages/GuardLogin';
 import GuardDashboard from '@/pages/GuardDashboard';
 import EntryGuardDashboard from '@/pages/EntryGuardDashboard';
@@ -33,7 +35,9 @@ function App() {
         <Route path="/violations" element={<Violations />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/registration" element={<Registration />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/guard-login" element={<GuardLogin />} />
         <Route path="/guard-dashboard" element={<GuardDashboard />} />
         <Route path="/entry-guard-dashboard" element={<EntryGuardDashboard />} />

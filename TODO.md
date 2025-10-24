@@ -1,11 +1,11 @@
-# Guard Dashboard Updates
+# TODO List for Guard Dashboard Modifications
 
-## Tasks
-- [x] Separate entry and exit guard dashboards
-- [x] Update routing to use separate dashboards
-- [x] Update GuardLogin to navigate to appropriate dashboard
-- [ ] Move Parking Overview Card from left panel to right panel below Vehicle & Owner Info in Entry Guard dashboard
-- [ ] Add Vehicle Type Cards to main panel (left) after Live Exit ANPR in Exit Guard dashboard
-- [ ] Add Parking Overview Card to secondary panel (right) below Visitor Pass Verification in Exit Guard dashboard
-- [ ] Verify violation reporting functionality for both guards
-- [ ] Test dashboard layouts for both entry and exit guards
+## Task: Modify Violation & Suspension Check and Layout
+- [ ] Move "No Previous Violations" indicator to Vehicle & Owner Info section as a small, always-visible indicator in ExitGuardDashboard.tsx
+- [ ] Remove the conditional "Violation and Suspension Status" section from ExitGuardDashboard.tsx
+- [ ] Remove "6+ Wheeler" card from vehicle type cards in ExitGuardDashboard.tsx (leave 3 cards)
+- [ ] Remove "Hours Stayed" text from vehicle info in ExitGuardDashboard.tsx
+- [ ] Apply similar changes to EntryGuardDashboard.tsx: move violation indicator, remove 6+ Wheeler card, remove Hours Stayed
+- [ ] Test the changes to ensure consistent layout and proper functionality
+- [ ] Capitalize "Non Teaching Personnel" and "Faculty" throughout both dashboards
+- [ ] Adjust vehicle type cards to occupy same width as ANPR live feed

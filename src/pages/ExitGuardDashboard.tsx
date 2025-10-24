@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Car, Users, LogOut, FileText, GraduationCap, UserCheck, Camera, Bike, Truck, RefreshCw, CheckCircle, XCircle, Search, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addViolation, hasActiveViolations, getSuspendedVehicles } from '@/utils/violationsStorage';
+import { addViolation, hasActiveViolations, getSuspendedVehicles, getViolationsByPlate, getVehiclePenalty } from '@/utils/violationsStorage';
 import { addNotification, getUnacknowledgedNotifications, acknowledgeNotification } from '@/utils/notifications';
 
 const ExitGuardDashboard = () => {
@@ -39,7 +39,7 @@ const ExitGuardDashboard = () => {
   const [violationForm, setViolationForm] = useState({
     licensePlate: '',
     ownerName: '',
-    ownerType: 'Student',
+    ownerType: 'student',
     violationType: 'Parking Violation',
     description: '',
     severity: 'medium',
@@ -48,6 +48,10 @@ const ExitGuardDashboard = () => {
   });
   const [isViolationDialogOpen, setIsViolationDialogOpen] = useState(false);
 
+  // Previous violations and suspension state
+  const [previousViolations, setPreviousViolations] = useState<any[]>([]);
+  const [isSuspended, setIsSuspended] = useState(false);
+
   // Exit guard verification state
   const [exitVerification, setExitVerification] = useState({
     passId: '',
@@ -55,6 +59,9 @@ const ExitGuardDashboard = () => {
     verificationStatus: null as 'verified' | 'invalid' | null,
     isVerifying: false
   });
+
+  // Dialog state for verification popup
+  const [isVerifyPassDialogOpen, setIsVerifyPassDialogOpen] = useState(false);
 
   // Mock issued passes data (shared between entry and exit guards)
   const [issuedPasses, setIssuedPasses] = useState<any[]>([
@@ -98,16 +105,16 @@ const ExitGuardDashboard = () => {
       owner: 'Dr. Jane Smith',
       vehicle: 'Toyota Camry',
       color: 'White',
-      ownerType: 'Faculty Member',
+      ownerType: 'Faculty',
       isAuthorized: true
     },
     {
       plateNumber: 'VIS2024',
       rfidTag: 'N/A',
-      owner: 'Unknown Visitor',
+      owner: 'Unauthorized Vehicle',
       vehicle: 'Toyota Vios',
       color: 'Silver',
-      ownerType: 'Unauthorized Visitor',
+      ownerType: 'Non Teaching Personnel',
       isAuthorized: false
     }
   ];
@@ -154,7 +161,7 @@ const ExitGuardDashboard = () => {
     if (currentGuard?.role !== 'exit') return;
 
     const interval = setInterval(() => {
-      if (Math.random() > 0.95 && exitDetectionStatus === 'idle') {
+      if (Math.random() > 0.7 && exitDetectionStatus === 'idle') {
         setExitDetectionStatus('detecting');
 
         setTimeout(() => {
@@ -171,8 +178,17 @@ const ExitGuardDashboard = () => {
             hoursStayed: hoursStayed
           };
 
+          // Check for previous violations and suspension status
+          const violations = getViolationsByPlate(randomVehicle.plateNumber);
+          const suspendedVehicles = getSuspendedVehicles();
+          const isVehicleSuspended = suspendedVehicles.some(vehicle => vehicle === randomVehicle.plateNumber);
+
+          setPreviousViolations(violations);
+          setIsSuspended(isVehicleSuspended);
           setCurrentExitingVehicle(detectedVehicle);
           setExitDetectionStatus('detected');
+
+          // Note: Dialog will be opened manually by guard via button
 
           // Auto clear after 30 seconds for exiting vehicles
           setTimeout(() => {
@@ -191,9 +207,9 @@ const ExitGuardDashboard = () => {
               hoursStayed: 0
             });
           }, 30000);
-        }, 2000);
+        }, 1500);
       }
-    }, 1000);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [exitDetectionStatus, currentGuard]);
@@ -294,7 +310,7 @@ const ExitGuardDashboard = () => {
       description: violationForm.description,
       severity: violationForm.severity as 'low' | 'medium' | 'high',
       status: 'pending',
-      reportedBy: currentGuard?.username || 'Guard',
+      reportedBy: 'Guard',
       location: violationForm.location,
       evidence: violationForm.image ? ['uploaded_image.jpg'] : []
     });
@@ -398,15 +414,36 @@ const ExitGuardDashboard = () => {
 
                     {exitDetectionStatus === 'detected' && (
                       <div className="text-center space-y-4">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                          <Car className="h-8 w-8 text-green-600" />
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
+                          currentExitingVehicle.isAuthorized
+                            ? 'bg-green-100'
+                            : 'bg-red-100'
+                        }`}>
+                          <Car className={`h-8 w-8 ${
+                            currentExitingVehicle.isAuthorized
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`} />
                         </div>
                         <div className="space-y-2">
                           <p className="font-bold text-lg">{currentExitingVehicle.plateNumber}</p>
                           <p className="text-sm text-muted-foreground">{currentExitingVehicle.owner}</p>
-                          <Badge variant="secondary">
+                          <Badge variant={currentExitingVehicle.isAuthorized ? "secondary" : "destructive"}>
                             {currentExitingVehicle.ownerType}
                           </Badge>
+                          {!currentExitingVehicle.isAuthorized && (
+                            <div className="mt-2">
+                              <Button
+                                onClick={() => setIsVerifyPassDialogOpen(true)}
+                                variant="outline"
+                                size="sm"
+                                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                              >
+                                <AlertTriangle className="h-4 w-4 mr-2" />
+                                Verify Pass
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -414,7 +451,46 @@ const ExitGuardDashboard = () => {
                 </CardContent>
               </Card>
 
+              {/* Vehicle Type Cards */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 h-fit">
+                <Card className="bg-white w-full">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Bike className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium">2 Wheeler</p>
+                        <p className="text-2xl font-bold">{vehicleCounts.twowheeler}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
+                <Card className="bg-white w-full">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Car className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium">3 Wheeler</p>
+                        <p className="text-2xl font-bold">{vehicleCounts.threewheeler}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white w-full">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Car className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <p className="text-sm font-medium">4 Wheeler</p>
+                        <p className="text-2xl font-bold">{vehicleCounts.fourwheeler}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+
+              </div>
 
             </div>
 
@@ -425,30 +501,30 @@ const ExitGuardDashboard = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Car className="h-5 w-5" />
-                    Exiting Vehicle & Owner Info
+                  Vehicle & Owner Info
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="font-medium text-muted-foreground">Plate:</p>
-                      <p className="font-mono font-bold">{currentExitingVehicle.isAuthorized ? currentExitingVehicle.plateNumber : ''}</p>
+                      <p className="font-mono font-bold">{currentExitingVehicle.isAuthorized ? currentExitingVehicle.plateNumber : '-'}</p>
                     </div>
                     <div>
                       <p className="font-medium text-muted-foreground">RFID:</p>
-                      <p className="font-mono">{currentExitingVehicle.isAuthorized ? currentExitingVehicle.rfidTag : ''}</p>
+                      <p className="font-mono">{currentExitingVehicle.isAuthorized ? currentExitingVehicle.rfidTag : '-'}</p>
                     </div>
                     <div>
                       <p className="font-medium text-muted-foreground">Owner:</p>
-                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.owner : ''}</p>
+                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.owner : '-'}</p>
                     </div>
                     <div>
                       <p className="font-medium text-muted-foreground">Vehicle:</p>
-                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.vehicle : ''}</p>
+                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.vehicle : '-'}</p>
                     </div>
                     <div>
                       <p className="font-medium text-muted-foreground">Color:</p>
-                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.color : ''}</p>
+                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.color : '-'}</p>
                     </div>
                     <div>
                       <p className="font-medium text-muted-foreground">Time In:</p>
@@ -459,14 +535,21 @@ const ExitGuardDashboard = () => {
                       <p>{currentExitingVehicle.time}</p>
                     </div>
                     <div>
-                      <p className="font-medium text-muted-foreground">Hours Stayed:</p>
-                      <p>{currentExitingVehicle.hoursStayed} hours</p>
-                    </div>
-                    <div>
                       <p className="font-medium text-muted-foreground">Owner Type:</p>
-                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.ownerType : ''}</p>
+                      <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.ownerType : '-'}</p>
                     </div>
+                    {currentExitingVehicle.isAuthorized && (
+                      <div className="col-span-2 mt-2">
+                        <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                          <CheckCircle className="h-3 w-3 text-green-600" />
+                          <p className="text-green-800 font-medium">No Previous Violations</p>
+                        </div>
+                        <p className="text-green-700 text-xs mt-1">This vehicle has a clean record.</p>
+                      </div>
+                    )}
                   </div>
+
+
 
                   <div className="flex gap-2">
                     <Button onClick={() => {
@@ -484,7 +567,7 @@ const ExitGuardDashboard = () => {
                         timeIn: '-',
                         hoursStayed: 0
                       });
-                    }} variant="outline" className="flex-1">
+                    }} variant="outline" className="w-full">
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Clear
                     </Button>
@@ -492,97 +575,7 @@ const ExitGuardDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Search className="h-5 w-5" />
-                    Visitor Pass Verification
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="passId">Temporary Pass Input / Scan</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="passId"
-                        value={exitVerification.passId}
-                        onChange={(e) => setExitVerification({ ...exitVerification, passId: e.target.value })}
-                        placeholder="Enter pass ID (e.g., TP001234)"
-                        className="flex-1"
-                      />
-                      <Button onClick={handleVerifyPass} disabled={exitVerification.isVerifying}>
-                        {exitVerification.isVerifying ? 'Verifying...' : 'Verify'}
-                      </Button>
-                    </div>
-                  </div>
 
-                  {/* Verification Status */}
-                  {exitVerification.verificationStatus && (
-                    <div className="space-y-4">
-                      <div className={`flex items-center gap-2 p-4 rounded-lg ${
-                        exitVerification.verificationStatus === 'verified'
-                          ? 'bg-green-50 border border-green-200'
-                          : 'bg-red-50 border border-red-200'
-                      }`}>
-                        {exitVerification.verificationStatus === 'verified' ? (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-600" />
-                        )}
-                        <span className={`font-medium ${
-                          exitVerification.verificationStatus === 'verified' ? 'text-green-800' : 'text-red-800'
-                        }`}>
-                          {exitVerification.verificationStatus === 'verified' ? 'Pass Verified' : 'Invalid Pass ID'}
-                        </span>
-                      </div>
-
-                      {/* Visitor Info */}
-                      {exitVerification.visitorInfo && (
-                        <div className="grid grid-cols-1 gap-3 p-4 bg-gray-50 rounded-lg text-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Name:</span>
-                            <span className="font-semibold">{exitVerification.visitorInfo.fullName}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Vehicle Plate:</span>
-                            <span className="font-mono font-semibold">{exitVerification.visitorInfo.licensePlate}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Purpose:</span>
-                            <span>{exitVerification.visitorInfo.purpose}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Time In:</span>
-                            <span>{exitVerification.visitorInfo.timeIn}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Pass ID:</span>
-                            <span className="font-mono font-semibold">{exitVerification.visitorInfo.id}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <span className="font-medium text-muted-foreground">Owner Type:</span>
-                            <span>Guest</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleConfirmExit}
-                          disabled={exitVerification.verificationStatus !== 'verified'}
-                          className="flex-1"
-                        >
-                          Confirm Exit
-                        </Button>
-                        <Button onClick={handleClearVerification} variant="outline" className="flex-1">
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Clear / Reset
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
 
               {/* Parking Overview Card */}
               <Card>
@@ -662,52 +655,7 @@ const ExitGuardDashboard = () => {
             </div>
           </div>
 
-          {/* Bottom Section - Recent Movements */}
-          <div className="grid gap-6 lg:grid-cols-1">
-            {/* Recent Vehicle/Visitor Movements Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Recent Vehicle/Visitor Movements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">License Plate</th>
-                        <th className="text-left p-2">Owner Type</th>
-                        <th className="text-left p-2">Time In</th>
-                        <th className="text-left p-2">Time Out</th>
-                        <th className="text-left p-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentVisitors.map((visitor, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="p-2 font-mono">{visitor.licensePlate}</td>
-                          <td className="p-2">Guest</td>
-                          <td className="p-2">{visitor.timeIn}</td>
-                          <td className="p-2">{visitor.timeOut || '-'}</td>
-                          <td className="p-2">
-                            <Badge variant={
-                              visitor.status === 'exited' ? 'secondary' :
-                              visitor.status === 'active' ? 'outline' :
-                              'destructive'
-                            }>
-                              {visitor.status === 'exited' ? 'Exited' : visitor.status === 'active' ? 'Inside' : visitor.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+
         </main>
       </div>
 
@@ -747,7 +695,7 @@ const ExitGuardDashboard = () => {
                 <SelectContent>
                   <SelectItem value="Student">Student</SelectItem>
                   <SelectItem value="Faculty">Faculty</SelectItem>
-                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="non teaching personnel">Non Teaching Personnel</SelectItem>
                   <SelectItem value="Guest">Guest</SelectItem>
                   <SelectItem value="Others">Others</SelectItem>
                 </SelectContent>
@@ -761,12 +709,22 @@ const ExitGuardDashboard = () => {
                   <SelectValue placeholder="Select violation type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unauthorized-parking">Unauthorized Parking</SelectItem>
-                  <SelectItem value="overstay">Overstay</SelectItem>
-                  <SelectItem value="wrong-zone">Wrong Zone</SelectItem>
-                  <SelectItem value="no-permit">No Permit</SelectItem>
-                  <SelectItem value="blocked-access">Blocked Access</SelectItem>
-                  <SelectItem value="others">Others</SelectItem>
+                  <SelectItem value="parking-roadside-no-parking">Parking on roadside and areas with "No Parking" sign</SelectItem>
+                  <SelectItem value="blocking-driveway">Blocking a driveway (obstruction)</SelectItem>
+                  <SelectItem value="blocking-sidewalks">Blocking/Parking on sidewalks and path walks (obstruction)</SelectItem>
+                  <SelectItem value="parking-intersection">Parking at or inside an intersection</SelectItem>
+                  <SelectItem value="parking-pedestrian-crossing">Parking on pedestrian crossings</SelectItem>
+                  <SelectItem value="double-parking">Double parking or on the driver side of a parked vehicle</SelectItem>
+                  <SelectItem value="parking-near-fire-hydrant">Parking at least 4 meters from a fire hydrant</SelectItem>
+                  <SelectItem value="parking-undesignated">Parking on areas not designated as parking space</SelectItem>
+                  <SelectItem value="engine-on">Parking and leaving the vehicle with engine on</SelectItem>
+                  <SelectItem value="occupying-two-spaces">Occupying two (2) parking spaces</SelectItem>
+                  <SelectItem value="expired-rfid">Entering the university premises using an expired or unauthorized RFID tag</SelectItem>
+                  <SelectItem value="tampered-rfid">Entering with a tampered or cloned RFID tag</SelectItem>
+                  <SelectItem value="mismatched-plate">Entering using a vehicle whose plate number is not recognized or mismatched by the ANPR system</SelectItem>
+                  <SelectItem value="using-others-rfid">Using another person's registered RFID tag or vehicle plate for access</SelectItem>
+                  <SelectItem value="wrong-vehicle-type">Parking of motorcycles, e-bikes, or tricycles in the designated parking space for 4-wheeled vehicles (or vice versa)</SelectItem>
+                  <SelectItem value="other-offenses">Other offenses/violations stated in the policy</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -819,6 +777,113 @@ const ExitGuardDashboard = () => {
             <Button onClick={handleReportViolation} className="w-full">
               Report Violation
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unauthorized Vehicle Verification Dialog */}
+      <Dialog open={isVerifyPassDialogOpen} onOpenChange={setIsVerifyPassDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Unauthorized Vehicle Detected
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 font-medium">Vehicle {currentExitingVehicle.plateNumber} is not authorized to exit.</p>
+              <p className="text-red-700 text-sm mt-1">Please verify if this vehicle has a valid temporary pass.</p>
+            </div>
+
+            <div>
+              <Label htmlFor="verifyPassId">Enter Temporary Pass ID</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="verifyPassId"
+                  value={exitVerification.passId}
+                  onChange={(e) => setExitVerification({ ...exitVerification, passId: e.target.value })}
+                  placeholder="Enter pass ID (e.g., TP001234)"
+                  className="flex-1"
+                />
+                <Button onClick={handleVerifyPass} disabled={exitVerification.isVerifying}>
+                  {exitVerification.isVerifying ? 'Verifying...' : 'Verify'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Verification Status */}
+            {exitVerification.verificationStatus && (
+              <div className="space-y-4">
+                <div className={`flex items-center gap-2 p-4 rounded-lg ${
+                  exitVerification.verificationStatus === 'verified'
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  {exitVerification.verificationStatus === 'verified' ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <span className={`font-medium ${
+                    exitVerification.verificationStatus === 'verified' ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {exitVerification.verificationStatus === 'verified' ? 'Pass Verified - Vehicle Authorized' : 'Invalid Pass - Vehicle Not Authorized'}
+                  </span>
+                </div>
+
+                {/* Visitor Info */}
+                {exitVerification.visitorInfo && (
+                  <div className="grid grid-cols-1 gap-3 p-4 bg-gray-50 rounded-lg text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <span className="font-medium text-muted-foreground">Name:</span>
+                      <span className="font-semibold">{exitVerification.visitorInfo.fullName}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <span className="font-medium text-muted-foreground">Vehicle Plate:</span>
+                      <span className="font-mono font-semibold">{exitVerification.visitorInfo.licensePlate}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <span className="font-medium text-muted-foreground">Purpose:</span>
+                      <span>{exitVerification.visitorInfo.purpose}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <span className="font-medium text-muted-foreground">Time In:</span>
+                      <span>{exitVerification.visitorInfo.timeIn}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <span className="font-medium text-muted-foreground">Pass ID:</span>
+                      <span className="font-mono font-semibold">{exitVerification.visitorInfo.id}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      setIsVerifyPassDialogOpen(false);
+                      setExitVerification({
+                        passId: '',
+                        visitorInfo: null,
+                        verificationStatus: null,
+                        isVerifying: false
+                      });
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Deny Exit
+                  </Button>
+                  <Button
+                    onClick={handleConfirmExit}
+                    disabled={exitVerification.verificationStatus !== 'verified'}
+                    className="flex-1"
+                  >
+                    Allow Exit
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

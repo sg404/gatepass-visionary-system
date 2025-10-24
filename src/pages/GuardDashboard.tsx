@@ -1011,10 +1011,6 @@ const GuardDashboard = () => {
                         <p>{currentExitingVehicle.time}</p>
                       </div>
                       <div>
-                        <p className="font-medium text-muted-foreground">Hours Stayed:</p>
-                        <p>{currentExitingVehicle.hoursStayed} hours</p>
-                      </div>
-                      <div>
                         <p className="font-medium text-muted-foreground">Owner Type:</p>
                         <p>{currentExitingVehicle.isAuthorized ? currentExitingVehicle.ownerType : ''}</p>
                       </div>
@@ -1043,6 +1039,25 @@ const GuardDashboard = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Violation & Suspension Check - Only for registered vehicles */}
+                {currentExitingVehicle.isAuthorized && exitDetectionStatus === 'detected' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5" />
+                        Violation & Suspension Check
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center space-y-2">
+                        <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
+                        <p className="font-medium text-green-800">No Previous Violations</p>
+                        <p className="text-sm text-muted-foreground">This vehicle has a clean record.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card>
                   <CardHeader>
@@ -1299,7 +1314,7 @@ const GuardDashboard = () => {
                   <SelectContent>
                     <SelectItem value="Student">Student</SelectItem>
                     <SelectItem value="Faculty">Faculty</SelectItem>
-                    <SelectItem value="Staff">Staff</SelectItem>
+                      <SelectItem value="non teaching personnel">Non Teaching Personnel</SelectItem>
                     <SelectItem value="Guest">Guest</SelectItem>
                     <SelectItem value="Others">Others</SelectItem>
                   </SelectContent>

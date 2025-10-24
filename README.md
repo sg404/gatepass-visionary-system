@@ -1,69 +1,89 @@
-# Welcome to your Lovable project
+# Smart Vehicle Gate Pass System
 
-## Project info
+A modern, comprehensive smart vehicle gate pass system built with React, TypeScript, and Tailwind CSS. This system provides automated vehicle access control, visitor management, and comprehensive reporting for educational institutions and organizations.
 
-**URL**: https://lovable.dev/projects/2bd8f056-1f22-4df0-9ca5-2dfdc2f1f47f
+## Features
 
-## How can I edit this code?
+- **Automated Vehicle Access Control**: RFID and ANPR-based entry/exit system
+- **Multi-User Roles**: Admin, Security Guards, and Visitors
+- **Real-time Monitoring**: Live vehicle tracking and status updates
+- **Violation Management**: Automated violation detection and penalty system
+- **Comprehensive Reporting**: Detailed analytics and access logs
+- **Visitor Management**: Temporary access control for visitors
+- **Parking Management**: Automated parking slot allocation
+- **Notification System**: Real-time alerts and notifications
 
-There are several ways of editing your application.
+## Technologies Used
 
-**Use Lovable**
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: shadcn/ui, Tailwind CSS
+- **State Management**: React Query, Local Storage
+- **Icons**: Lucide React
+- **Charts**: Recharts
+- **Forms**: React Hook Form, Zod validation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2bd8f056-1f22-4df0-9ca5-2dfdc2f1f47f) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v18 or higher)
+- npm or yarn
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+1. Clone the repository:
+```bash
 git clone <YOUR_GIT_URL>
+cd smart-vehicle-gate-pass-system
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. Install dependencies:
+```bash
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+4. Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Project Structure
 
-**Use GitHub Codespaces**
+```
+src/
+├── components/          # Reusable UI components
+│   ├── layout/         # Layout components (Sidebar, Header, etc.)
+│   ├── ui/            # Base UI components (Button, Card, etc.)
+│   └── ...
+├── pages/             # Page components
+├── data/              # Mock data and constants
+├── types/             # TypeScript type definitions
+├── utils/             # Utility functions
+└── hooks/             # Custom React hooks
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Available Scripts
 
-## What technologies are used for this project?
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run build:dev` - Build for development
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
 
-This project is built with .
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This project can be deployed to any static hosting service like Vercel, Netlify, or GitHub Pages.
 
-## How can I deploy this project?
+## Contributing
 
-Simply open [Lovable](https://lovable.dev/projects/2bd8f056-1f22-4df0-9ca5-2dfdc2f1f47f) and click on Share -> Publish.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## I want to use a custom domain - is that possible?
+## License
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is licensed under the MIT License.

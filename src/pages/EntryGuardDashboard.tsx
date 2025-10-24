@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Car, Users, LogOut, FileText, GraduationCap, UserCheck, Camera, Bike, Truck, RefreshCw, CheckCircle, XCircle, Search, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addViolation, hasActiveViolations, getSuspendedVehicles } from '@/utils/violationsStorage';
+import { addViolation, hasActiveViolations, getSuspendedVehicles, getViolationsByPlate } from '@/utils/violationsStorage';
 import { addNotification, getUnacknowledgedNotifications, acknowledgeNotification } from '@/utils/notifications';
 
 const EntryGuardDashboard = () => {
@@ -56,6 +56,14 @@ const EntryGuardDashboard = () => {
     image: null as File | null
   });
   const [isViolationDialogOpen, setIsViolationDialogOpen] = useState(false);
+
+  // Current violations for detected vehicle
+  const [currentViolations, setCurrentViolations] = useState<any[]>([]);
+  const [isViolationDetailsOpen, setIsViolationDetailsOpen] = useState(false);
+
+  // Verification dialog for unauthorized vehicles
+  const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
+  const [isDetectionPaused, setIsDetectionPaused] = useState(false);
 
   // Mock issued passes data (shared between entry and exit guards)
   const [issuedPasses, setIssuedPasses] = useState<any[]>([
@@ -145,7 +153,7 @@ const EntryGuardDashboard = () => {
 
   // Simulate vehicle detection (entry guard only)
   useEffect(() => {
-    if (currentGuard?.role !== 'entry') return;
+    if (currentGuard?.role !== 'entry' || isDetectionPaused) return;
 
     const interval = setInterval(() => {
       if (Math.random() > 0.95 && detectionStatus === 'idle') {
@@ -162,8 +170,16 @@ const EntryGuardDashboard = () => {
           setCurrentVehicle(detectedVehicle);
           setDetectionStatus('detected');
 
-          // Auto clear after 30 seconds for authorized vehicles
-          if (detectedVehicle.isAuthorized) {
+          // Fetch violations for the detected vehicle
+          const violations = getViolationsByPlate(detectedVehicle.plateNumber);
+          setCurrentViolations(violations);
+
+          // For unauthorized vehicles, pause detection and show verification dialog
+          if (!detectedVehicle.isAuthorized) {
+            setIsDetectionPaused(true);
+            setIsVerificationDialogOpen(true);
+          } else {
+            // Auto clear after 30 seconds for authorized vehicles
             setTimeout(() => {
               setDetectionStatus('idle');
               setCurrentVehicle({
@@ -184,7 +200,7 @@ const EntryGuardDashboard = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [detectionStatus, currentGuard]);
+  }, [detectionStatus, currentGuard, isDetectionPaused]);
 
   const handleLogout = () => {
     localStorage.removeItem('guardSession');
@@ -409,8 +425,8 @@ const EntryGuardDashboard = () => {
               </Card>
 
               {/* Vehicle Type Cards */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 h-fit">
-                <Card className="bg-white">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 h-fit">
+                <Card className="bg-white w-full">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2">
                       <Bike className="h-5 w-5 text-blue-600" />
@@ -422,7 +438,7 @@ const EntryGuardDashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white">
+                <Card className="bg-white w-full">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2">
                       <Car className="h-5 w-5 text-green-600" />
@@ -434,7 +450,7 @@ const EntryGuardDashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white">
+                <Card className="bg-white w-full">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2">
                       <Car className="h-5 w-5 text-purple-600" />
@@ -446,17 +462,7 @@ const EntryGuardDashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-5 w-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm font-medium">6+ Wheeler</p>
-                        <p className="text-2xl font-bold">{vehicleCounts.sixpluswheeler}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+
               </div>
 
             </div>
@@ -582,6 +588,47 @@ const EntryGuardDashboard = () => {
                             <Button onClick={handleIssueTemporaryPass} className="w-full">
                               Issue Temporary Pass
                             </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                    {currentViolations.length > 0 && detectionStatus === 'detected' && (
+                      <Dialog open={isViolationDetailsOpen} onOpenChange={setIsViolationDetailsOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="flex-1 bg-yellow-500 text-white hover:bg-yellow-600">
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            View Violations ({currentViolations.length})
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Vehicle Violations - {currentVehicle.plateNumber}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            {currentViolations.map((violation: any) => (
+                              <Card key={violation.id} className="p-4">
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-semibold">{violation.violationType}</p>
+                                      <p className="text-sm text-muted-foreground">ID: {violation.id}</p>
+                                    </div>
+                                    <Badge variant={violation.severity === 'high' ? 'destructive' : violation.severity === 'medium' ? 'secondary' : 'outline'}>
+                                      {violation.severity}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm">{violation.description}</p>
+                                  <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>Reported by: {violation.reportedBy}</span>
+                                    <span>Location: {violation.location}</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>Status: {violation.status}</span>
+                                    <span>Date: {new Date(violation.timestamp).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+                              </Card>
+                            ))}
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -779,6 +826,70 @@ const EntryGuardDashboard = () => {
             <Button onClick={handleReportViolation} className="w-full">
               Report Violation
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verification Dialog for Unauthorized Vehicles */}
+      <Dialog open={isVerificationDialogOpen} onOpenChange={setIsVerificationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify Unauthorized Vehicle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                <Car className="h-8 w-8 text-red-600" />
+              </div>
+              <p className="font-semibold text-lg">Unauthorized Vehicle Detected</p>
+              <p className="text-sm text-muted-foreground">
+                License Plate: <span className="font-mono font-bold">{currentVehicle.plateNumber}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Owner: {currentVehicle.owner}
+              </p>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Action Required:</strong> This vehicle is not authorized to enter. Please verify the visitor's identity and purpose before proceeding.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setIsVerificationDialogOpen(false);
+                  setIsDetectionPaused(false);
+                  setDetectionStatus('idle');
+                  setCurrentVehicle({
+                    plateNumber: '-',
+                    rfidTag: '-',
+                    owner: '-',
+                    vehicle: '-',
+                    color: '-',
+                    time: '-',
+                    date: '-',
+                    ownerType: '-',
+                    isAuthorized: true
+                  });
+                }}
+                variant="outline"
+                className="flex-1 bg-red-500 text-white hover:bg-red-600"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Deny Entry
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsVerificationDialogOpen(false);
+                  setIsVisitorDialogOpen(true);
+                }}
+                className="flex-1"
+              >
+                Proceed to Issue Pass
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

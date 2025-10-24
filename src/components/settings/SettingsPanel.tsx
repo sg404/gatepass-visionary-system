@@ -397,7 +397,7 @@ const SettingsPanel = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="db-name">Database Name</Label>
-                  <Input id="db-name" placeholder="gatepass_db" />
+                  <Input id="db-name" placeholder="smart_vehicle_gate_pass_db" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="db-user">Database User</Label>
